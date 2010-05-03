@@ -1,0 +1,28 @@
+DNArm: A fast DNA read mapper
+
+Project Description:
+
+Develop and implement an algorithm for efficiently mapping short reads of DNA
+(~30 bases) to the entire genome (~3,000,000,000 bases). In more computer
+science terms: map strings of length 30 to a constant string of length 3
+billion characters. In addition, all mappings that match 28/30 characters
+should be considered positive.
+
+Parallelization Techniques:
+
+(a) Build a tree of depth 30 with branching factor 5 (one branch to help with
+fuzzy matching) and have different execution units search through the tree for
+matches at the same time. The whole tree wont be able to fit into main memory
+at once but trees are easily broken into components that will fit.
+
+(b) Generate an index of the genome using strings of length 10. Look up each
+1/3rd of a short read in the index and then search through the possible
+locations in different execution units.
+
+(c) Combining the tree, index, and maybe some other types of data structures
+that we could use to further decompose the search.
+
+Hardware/Technologies: OpenCL
+
+Webpage: http://cs124project-2010.wikidot.com/133-124-joint-proj
+Google group: http://groups.google.com/group/ucla-cs133cm124
