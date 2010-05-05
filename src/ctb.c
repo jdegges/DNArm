@@ -3,7 +3,10 @@
 
 #include <getopt.h>
 #include <errno.h>
+#include <string.h>
+#include <assert.h>
 
+#include <pthread.h>
 #include <loomlib/thread_pool.h>
 
 #define BUF_LEN 1024
@@ -51,8 +54,8 @@ convert (void *vptr)
   while (inp >= in)
     {
       *outp-- = ((*in-- & 6) << 5)
-              | ((*in-- & 6) << 3);
-              | ((*in-- & 6) << 1);
+              | ((*in-- & 6) << 3)
+              | ((*in-- & 6) << 1)
               | ((*in   & 6) >> 1);
     }
 
@@ -63,7 +66,6 @@ convert (void *vptr)
   pthread_mutex_unlock (&outfp_mutex);
 
   free (out);
-  return 0;
 }
 
 FILE*
@@ -99,7 +101,7 @@ ctb (const char *infn, const char *outfn, const size_t parallel)
       return 1;
     }
 
-  if (NULL == (data = malloc ((sizeof *data) * BUF_SIZE)))
+  if (NULL == (data = malloc ((sizeof *data) * BUF_LEN)))
     {
       print_error ("Out of memory");
       return 1;
@@ -110,7 +112,7 @@ ctb (const char *infn, const char *outfn, const size_t parallel)
     {
       assert (thread_pool_push (pool, convert, data));
 
-      if (NULL == (data = malloc ((sizeof *data) * BUF_SIZE)))
+      if (NULL == (data = malloc ((sizeof *data) * BUF_LEN)))
         {
           print_error ("Out of memory");
           return 1;
@@ -146,7 +148,7 @@ xstrcpy (char **dst, const char *src)
 }
 
 int
-main (int argc, char *argv)
+main (int argc, char **argv)
 {
   char *infn = NULL;
   char *outfn = NULL;
@@ -190,7 +192,7 @@ main (int argc, char *argv)
     }
 
 
-  if (NULL = infn || NULL == outfn)
+  if (NULL == infn || NULL == outfn)
     {
       usage();
       return 1;
