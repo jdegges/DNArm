@@ -68,30 +68,13 @@ convert (void *vptr)
   free (out);
 }
 
-static FILE*
-xfopen (const char *path, const char *mode)
-{
-  FILE *fp = fopen (path, mode);
-
-  if (NULL == fp)
-    {
-      print_error ("%s", strerror (errno));
-      return NULL;
-    }
-
-  return fp;
-}
-
 static int
-ctb (const char *infn, const char *outfn, const size_t parallel)
+ctb (FILE *infp, const size_t parallel)
 {
-  FILE *infp;
   char *data = NULL;
   struct thread_pool *pool;
   int ret_val;
 
-  assert (NULL != (infp = xfopen (infn, "r")));
-  assert (NULL != (outfp = xfopen (outfn, "w")));
   assert (pool = thread_pool_new (parallel));
 
   if (0 != (ret_val = pthread_mutex_init (&outfp_mutex, NULL)))
@@ -130,27 +113,24 @@ usage (void)
   printf ("ctb -i input_file -o output_file\n");
 }
 
-int
-xstrcpy (char **dst, const char *src)
-{
-  if (NULL == (*dst = malloc ((sizeof **dst) * strlen (src))))
+static FILE*
+xfopen (const char *path, const char *mode)
+{ 
+  FILE *fp = fopen (path, mode);
+
+  if (NULL == fp)
     {
-      print_error ("Out of memory");
-      return 1;
+      print_error ("%s", strerror (errno));
+      return NULL;
     }
-  if (NULL == (*dst = strcpy (*dst, src)))
-    {
-      print_error ("Failed to copy string");
-      return 1;
-    }
-  return 0;
+
+  return fp;
 }
 
 int
 main (int argc, char **argv)
 {
-  char *infn = NULL;
-  char *outfn = NULL;
+  FILE *infp = outfp = NULL;
   size_t parallel = 1;
 
   static struct option long_options[] = {
@@ -170,10 +150,16 @@ main (int argc, char **argv)
       switch (c)
         {
           case 'i':
-            assert (0 == xstrcpy (&infn, optarg));
+            if (optarg[0] == '-' && optarg[1] == '\0')
+              infp = stdin;
+            else
+              assert (NULL != (infp = xfopen (optarg, "r")));
             break;
           case 'o':
-            assert (0 == xstrcpy (&outfn, optarg));
+            if (optarg[0] == '-' && optarg[1] == '\0')
+              outfp = stdout;
+            else
+              assert (NULL != (outfp = xfopen (optarg, "w")));
             break;
           case 'j':
             parallel = strtoul (optarg, NULL, 10);
@@ -190,12 +176,10 @@ main (int argc, char **argv)
         }
     }
 
+  if (NULL == infp)
+    infp = stdin;
+  if (NULL == outfp)
+    outfp = stdout;
 
-  if (NULL == infn || NULL == outfn)
-    {
-      usage();
-      return 1;
-    }
-
-  return ctb (infn, outfn, parallel);
+  return ctb (infp, parallel);
 }
