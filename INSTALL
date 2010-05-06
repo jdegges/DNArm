@@ -1,0 +1,17 @@
+Dependencies:
+
+1. autoconf
+2. autoconf-archive
+3. automake
+4. pkg-config
+5. loomlib (http://github.com/jdegges/loomlib)
+
+
+How to install:
+
+1. `cd DNArm'
+2. `autoreconf -vi'
+3. `./configure'
+4. `make'
+5. `make install'
+6. `make clean'
