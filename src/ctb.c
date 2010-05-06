@@ -17,8 +17,16 @@
     fprintf (stderr, "\n"); \
 }
 
+struct convert_args
+{
+  char *data;
+  size_t id;
+};
+
 static FILE *outfp;
+static size_t outid;
 static pthread_mutex_t outfp_mutex;
+static pthread_cond_t outfp_cond;
 
 /*
  * Base | lower case | upper case
@@ -36,11 +44,15 @@ static pthread_mutex_t outfp_mutex;
 static void
 convert (void *vptr)
 {
-  char *in = vptr;
+  struct convert_args *args = vptr;
+  char *in = args->data;
   char *inp;
   char *out;
   char *outp;
   size_t len = BUF_LEN;
+  size_t id = args->id;
+
+  free (args);
 
   if (NULL == (out = malloc (len / 4)))
     {
@@ -48,21 +60,33 @@ convert (void *vptr)
       return;
     }
 
-  inp = in+len;
-  outp = out+len/4;
+  inp = in;
+  outp = out;
 
-  while (inp >= in)
+  while (inp <= in+len-4)
     {
-      *outp-- = ((*inp-- & 6) << 5)
-              | ((*inp-- & 6) << 3)
-              | ((*inp-- & 6) << 1)
-              | ((*inp   & 6) >> 1);
+      *outp    = ((*inp++ & 6) << 5);
+      *outp   |= ((*inp++ & 6) << 3);
+      *outp   |= ((*inp++ & 6) << 1);
+      *outp++ |= ((*inp++ & 6) >> 1);
     }
 
   free (in);
 
+  /* lock output file pointer */
   pthread_mutex_lock (&outfp_mutex);
+
+  /* make sure its our turn to write */
+  while (id != outid)
+    pthread_cond_wait (&outfp_cond, &outfp_mutex);
+
+  /* actually write */
   assert (len/4 == fwrite (out, 1, len / 4, outfp));
+
+  /* tell everyone else to wake up and write */
+  outid++;
+  pthread_cond_broadcast (&outfp_cond);
+
   pthread_mutex_unlock (&outfp_mutex);
 
   free (out);
@@ -73,6 +97,7 @@ ctb (FILE *infp, const size_t parallel)
 {
   char *data = NULL;
   struct thread_pool *pool;
+  size_t id;
   int ret_val;
 
   assert (pool = thread_pool_new (parallel));
@@ -83,6 +108,12 @@ ctb (FILE *infp, const size_t parallel)
       return 1;
     }
 
+  if (0 != (ret_val = pthread_cond_init (&outfp_cond, NULL)))
+    {
+      print_error ("Failed to init condvar: %d", ret_val);
+      return 1;
+    }
+
   if (NULL == (data = malloc ((sizeof *data) * BUF_LEN)))
     {
       print_error ("Out of memory");
@@ -90,9 +121,20 @@ ctb (FILE *infp, const size_t parallel)
     }
 
 
+  id = 0;
   while (BUF_LEN == fread (data, sizeof *data, BUF_LEN, infp))
     {
-      assert (thread_pool_push (pool, convert, data));
+      struct convert_args *args;
+
+      if (NULL == (args = malloc (sizeof *args)))
+        {
+          print_error ("Out of memory");
+          return 1;
+        }
+
+      args->data = data;
+      args->id = id++;
+      assert (thread_pool_push (pool, convert, args));
 
       if (NULL == (data = malloc ((sizeof *data) * BUF_LEN)))
         {
@@ -101,6 +143,7 @@ ctb (FILE *infp, const size_t parallel)
         }
     }
 
+  free (data);
   assert (thread_pool_terminate (pool));
   thread_pool_free (pool);
 
@@ -110,7 +153,15 @@ ctb (FILE *infp, const size_t parallel)
 static void
 usage (void)
 {
+  printf ("\n");
   printf ("ctb -i input_file -o output_file\n");
+  printf ("\n");
+  printf ("Sample usage:\n");
+  printf ("$ wget ftp://ftp.ncbi.nlm.nih.gov/genomes/H_sapiens/Assembled_chromosomes/hs_alt_Celera_chr2.fa.gz\n");
+  printf ("$ gunzip hs_alt_Celera_chr2.fa.gz\n");
+  printf ("$ grep -v \">\" hs_alt_Celera_chr2.fa.gz | tr -d '\\n' > sample_input.txt\n");
+  printf ("$ cut -c 1-20480 sample_input.txt | sed 's/N/A/g' > small_input.txt\n");
+  printf ("$ ctb -i small_input.txt -o packed.txt\n");
 }
 
 static FILE*
@@ -181,5 +232,11 @@ main (int argc, char **argv)
   if (NULL == outfp)
     outfp = stdout;
 
-  return ctb (infp, parallel);
+  if (0 != ctb (infp, parallel))
+    print_error ("Failed to convert input to binary.");
+
+  fclose (infp);
+  fclose (outfp);
+
+  return 0;
 }
