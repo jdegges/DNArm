@@ -92,8 +92,70 @@ convert (void *vptr)
   free (out);
 }
 
+static void
+convert_inv (void *vptr)
+{
+  struct convert_args *args = vptr;
+  char *in = args->data;
+  char *inp;
+  char *out;
+  char *outp;
+  size_t len = BUF_LEN;
+  size_t id = args->id;
+
+  free (args);
+
+  if (NULL == (out = malloc (len * 4)))
+    {
+      print_error ("Out of memory");
+      return;
+    }
+
+  inp = in;
+  outp = out;
+
+  while (inp < in+len)
+    {
+      *outp = ((*inp >> 5) & 6) | 65;
+      *outp = *outp == 69 ? 84 : *outp;
+      outp++;
+
+      *outp = ((*inp >> 3) & 6) | 65;
+      *outp = *outp == 69 ? 84 : *outp;
+      outp++;
+
+      *outp = ((*inp >> 1) & 6) | 65;
+      *outp = *outp == 69 ? 84 : *outp;
+      outp++;
+
+      *outp = ((*inp++ << 1)&6) | 65;
+      *outp = *outp == 69 ? 84 : *outp;
+      outp++;
+    }
+
+  free (in);
+
+  /* lock output file pointer */
+  pthread_mutex_lock (&outfp_mutex);
+
+  /* make sure its our turn to write */
+  while (id != outid)
+    pthread_cond_wait (&outfp_cond, &outfp_mutex);
+
+  /* actually write */
+  assert (len*4 == fwrite (out, 1, len * 4, outfp));
+
+  /* tell everyone else to wake up and write */
+  outid++;
+  pthread_cond_broadcast (&outfp_cond);
+
+  pthread_mutex_unlock (&outfp_mutex);
+
+  free (out);
+}
+
 static int
-ctb (FILE *infp, const size_t parallel)
+ctb (FILE *infp, const size_t parallel, bool inverse)
 {
   char *data = NULL;
   struct thread_pool *pool;
@@ -134,7 +196,10 @@ ctb (FILE *infp, const size_t parallel)
 
       args->data = data;
       args->id = id++;
-      assert (thread_pool_push (pool, convert, args));
+      if (inverse)
+        assert (thread_pool_push (pool, convert_inv, args));
+      else
+        assert (thread_pool_push (pool, convert, args));
 
       if (NULL == (data = malloc ((sizeof *data) * BUF_LEN)))
         {
@@ -183,17 +248,19 @@ main (int argc, char **argv)
 {
   FILE *infp = outfp = NULL;
   size_t parallel = 1;
+  bool inverse = false;
 
   static struct option long_options[] = {
     {"input",     required_argument, 0, 'i'},
     {"output",    required_argument, 0, 'o'},
-    {"parallel",  required_argument, 0, 'j'}
+    {"parallel",  required_argument, 0, 'j'},
+    {"inverse",   no_argument      , 0, 'n'}
   };
 
   for (;;)
     {
       int option_index = 0;
-      int c = getopt_long (argc, argv, "i:o:", long_options, &option_index);
+      int c = getopt_long (argc, argv, "i:o:p:n", long_options, &option_index);
 
       if (-1 == c)
         break;
@@ -220,6 +287,9 @@ main (int argc, char **argv)
                 return 1;
               }
             break;
+          case 'n':
+            inverse = true;
+            break;
           case '?':
           default:
             usage ();
@@ -232,7 +302,7 @@ main (int argc, char **argv)
   if (NULL == outfp)
     outfp = stdout;
 
-  if (0 != ctb (infp, parallel))
+  if (0 != ctb (infp, parallel, inverse))
     print_error ("Failed to convert input to binary.");
 
   fclose (infp);
