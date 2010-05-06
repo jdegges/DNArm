@@ -17,8 +17,8 @@
     fprintf (stderr, "\n"); \
 }
 
-FILE *outfp;
-pthread_mutex_t outfp_mutex;
+static FILE *outfp;
+static pthread_mutex_t outfp_mutex;
 
 /*
  * Base | lower case | upper case
@@ -33,7 +33,7 @@ pthread_mutex_t outfp_mutex;
  * `(char & 0000 0110)` zero's out the other bits
  * `(char & 0000 0110) << 5` shifts the two bits we care about to the MSB
  */
-void
+static void
 convert (void *vptr)
 {
   char *in = vptr;
@@ -53,10 +53,10 @@ convert (void *vptr)
 
   while (inp >= in)
     {
-      *outp-- = ((*in-- & 6) << 5)
-              | ((*in-- & 6) << 3)
-              | ((*in-- & 6) << 1)
-              | ((*in   & 6) >> 1);
+      *outp-- = ((*inp-- & 6) << 5)
+              | ((*inp-- & 6) << 3)
+              | ((*inp-- & 6) << 1)
+              | ((*inp   & 6) >> 1);
     }
 
   free (in);
@@ -68,7 +68,7 @@ convert (void *vptr)
   free (out);
 }
 
-FILE*
+static FILE*
 xfopen (const char *path, const char *mode)
 {
   FILE *fp = fopen (path, mode);
@@ -82,12 +82,11 @@ xfopen (const char *path, const char *mode)
   return fp;
 }
 
-int
+static int
 ctb (const char *infn, const char *outfn, const size_t parallel)
 {
   FILE *infp;
   char *data = NULL;
-  size_t len;
   struct thread_pool *pool;
   int ret_val;
 
@@ -125,7 +124,7 @@ ctb (const char *infn, const char *outfn, const size_t parallel)
   return 0;
 }
 
-void
+static void
 usage (void)
 {
   printf ("ctb -i input_file -o output_file\n");
