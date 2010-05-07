@@ -65,10 +65,10 @@ convert (void *vptr)
 
   while (inp <= in+len-4)
     {
-      *outp    = ((*inp++ & 6) << 5);
-      *outp   |= ((*inp++ & 6) << 3);
-      *outp   |= ((*inp++ & 6) << 1);
-      *outp++ |= ((*inp++ & 6) >> 1);
+      *outp    = ((*inp++ & 6) << 5); // XX00 0000
+      *outp   |= ((*inp++ & 6) << 3); // 00XX 0000
+      *outp   |= ((*inp++ & 6) << 1); // 0000 XX00
+      *outp++ |= ((*inp++ & 6) >> 1); // 0000 00XX
     }
 
   free (in);
@@ -253,7 +253,7 @@ main (int argc, char **argv)
   static struct option long_options[] = {
     {"input",     required_argument, 0, 'i'},
     {"output",    required_argument, 0, 'o'},
-    {"parallel",  required_argument, 0, 'j'},
+    {"parallel",  required_argument, 0, 'p'},
     {"inverse",   no_argument      , 0, 'n'}
   };
 
@@ -279,7 +279,7 @@ main (int argc, char **argv)
             else
               assert (NULL != (outfp = xfopen (optarg, "w")));
             break;
-          case 'j':
+          case 'p':
             parallel = strtoul (optarg, NULL, 10);
             if (EINVAL == errno || ERANGE == errno)
               {
