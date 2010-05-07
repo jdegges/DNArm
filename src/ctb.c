@@ -224,8 +224,8 @@ usage (void)
   printf ("Sample usage:\n");
   printf ("$ wget ftp://ftp.ncbi.nlm.nih.gov/genomes/H_sapiens/Assembled_chromosomes/hs_alt_Celera_chr2.fa.gz\n");
   printf ("$ gunzip hs_alt_Celera_chr2.fa.gz\n");
-  printf ("$ grep -v \">\" hs_alt_Celera_chr2.fa.gz | tr -d '\\n' > sample_input.txt\n");
-  printf ("$ cut -c 1-20480 sample_input.txt | sed 's/N/A/g' > small_input.txt\n");
+  printf ("$ grep -v \">\" hs_alt_Celera_chr2.fa | tr -d '\\n' > sample_input.txt\n");
+  printf ("$ cut -c 1-20480 sample_input.txt | sed 's/N/A/g' | tr -d '\\n' > small_input.txt\n");
   printf ("$ ctb -i small_input.txt -o packed.txt\n");
 }
 
