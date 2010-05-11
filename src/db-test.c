@@ -9,6 +9,8 @@
 
 const char dbn[] = "/path/to/db.txt";
 
+#define SIZE 42900
+
 int
 main (void)
 {
@@ -20,19 +22,17 @@ main (void)
   /* insert 2**32 values into the db */
   assert (NULL != (d = db_open (dbn, 1)));
   gettimeofday (&stv, NULL);
-  for (i = 0; i < 4294967296; i++)
+  for (i = 0; i < SIZE; i++)
     assert (true == db_insert (d, i, i));
   gettimeofday (&etv, NULL);
 
   /* print elapsed time (for benchmarking db implementations) */
   printf ("\n");
   printf ("inserting took: %ld s\n", etv.tv_sec - stv.tv_sec);
-  assert (true == db_close (b));
 
   /* query for all of the 2**32 values and verify that they are correct */
-  assert (NULL != (d = db_open (dbn, 1)));
   gettimeofday (&stv, NULL);
-  for (i = 0; i < 4294967296; i++)
+  for (i = 0; i < SIZE; i++)
     {
       uint32_t *values;
       int32_t count = db_query (d, i, &values);
