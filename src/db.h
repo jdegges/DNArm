@@ -25,8 +25,7 @@ db_close (struct db *d);
  * Returns true if successfully inserted, false otherwise.
  */
 bool
-db_insert (struct db *d, const uint32_t key,
-           const uint32_t value);
+db_insert (struct db *d, const uint32_t key, const uint32_t value);
 
 /*
  * Query for all values associated with key.
