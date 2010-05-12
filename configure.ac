@@ -47,6 +47,15 @@ AC_ARG_WITH([memdb-test],
 AC_SUBST([BUILD_MEMDB_TEST], [${BUILD_MEMDB_TEST}])
 AM_CONDITIONAL([BUILD_MEMDB_TEST], [test x$BUILD_MEMDB_TEST = xyes])
 
+# readgen
+#
+BUILD_READGEN=yes
+AC_ARG_WITH([readgen],
+  AC_HELP_STRING([--without-readgen], [Do not build readgen.]),
+  [BUILD_READGEN=no])
+AC_SUBST([BUILD_READGEN], [${BUILD_READGEN}])
+AM_CONDITIONAL([BUILD_READGEN], [test x$BUILD_READGEN = xyes])
+
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h])
 
@@ -66,4 +75,5 @@ echo "DNArm build summary"
 echo "==================="
 echo "ctb           : $BUILD_CTB"
 echo "memdb-test    : $BUILD_MEMDB_TEST"
+echo "readgen       : $BUILD_READGEN"
 echo
