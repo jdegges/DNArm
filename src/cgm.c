@@ -3,6 +3,21 @@
 #include<string.h>
 #include</usr/include/stdint.h>
 #include<stdbool.h>
+#include "db.h"
+
+int editValues(uint32_t* list, uint32_t length, int offset)
+{
+	int i, j = 0;
+
+	for(i = 0; i < length; i++){
+		if(list[i] > offset){
+			list[j] = list[i] - offset;
+			j++;
+		}
+	}
+
+	return j;
+}
 
 int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, uint32_t** result)
 {
@@ -59,7 +74,7 @@ int main()
 
 */
 
-int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches, int gap, int startOffset)
+int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches, int gap, int startOffset)
 {
 	int i = 0, j= 0, mLength = 0;
 	uint32_t* dubs = NULL;
@@ -99,6 +114,25 @@ int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLengt
 
 }
 
+int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches)
+{
+	uint32_t* sing = NULL;
+	uint32_t* c = NULL;
+	int sLength, cLength = 0;
+
+	int dLength = doubleMatchAid(a, b, aLength, bLength, secLength, matches, 0, 0);
+
+	if(dLength > 0)
+		return dLength;
+
+	bLength = editValues(b, bLength, secLength);
+	sLength = mergeLists(a, b, c, aLength, bLength, cLength, &sing);
+
+	matches = &sing;
+	return sLength;
+
+}
+
 /*
 int main()
 {
@@ -121,12 +155,13 @@ int main()
 
 int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, int secLength, uint32_t** matches)
 {
-	int i = 0, j = 0, k = 0, mLength = 0, d12Length = 0, d23Length = 0, d13Length = 0, dLength;
+	int i = 0, j = 0, k = 0, mLength = 0, d12Length = 0, d23Length = 0, d13Length = 0, dLength, sLength;
 	uint32_t* trips = NULL;
 	uint32_t* dub12 = NULL;
 	uint32_t* dub23 = NULL;
 	uint32_t* dub13 = NULL;
 	uint32_t* dubs = NULL;
+	uint32_t* sing = NULL;
 
 	int mMax = aLength;
 	int dMax = aLength;
@@ -188,20 +223,30 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 
 	free(trips);
 
-	d23Length = doubleMatch(b, c, bLength, cLength, secLength, &dub23, 0, secLength);
-	d13Length = doubleMatch(a, c, aLength, cLength, secLength, &dub13, secLength, 0);
+	d23Length = doubleMatchAid(b, c, bLength, cLength, secLength, &dub23, 0, secLength);
+	d13Length = doubleMatchAid(a, c, aLength, cLength, secLength, &dub13, secLength, 0);
 
-	dLength = mergeLists(dub12, dub23, dub13, d12Length, d23Length, d13Length, &dubs);
-	
-	if(dub12 != NULL)
-		free(dub12);
-	if(dub23 != NULL)
-		free(dub23);
-	if(dub13 != NULL)
-		free(dub13);
-	
-	*matches = dubs;
-	return dLength;
+	if(d12Length != 0 && d13Length != 0 && d23Length != 0)
+	{
+		dLength = mergeLists(dub12, dub23, dub13, d12Length, d23Length, d13Length, &dubs);
+		
+		if(dub12 != NULL)
+			free(dub12);
+		if(dub23 != NULL)
+			free(dub23);
+		if(dub13 != NULL)
+			free(dub13);
+		
+		*matches = dubs;
+		return dLength;
+	}
+
+	bLength = editValues(b, bLength, secLength);
+	cLength = editValues(c, cLength, 2*secLength);
+	sLength = mergeLists(a, b, c, aLength, bLength, cLength, &sing);
+
+	*matches = sing;
+	return sLength;
 
 
 }
@@ -226,17 +271,15 @@ int main()
 }
 */
 
-int cgm(char* read, int readLength, int keySize, uint32_t** matches)
+int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* database)
 {
-	int sections, secLength;
+	int sections, secLength, aLength, bLength, cLength, count;
 	char* a;
 	char* b;
 	char* c;
 	uint32_t* aList = NULL;
 	uint32_t* bList = NULL;
 	uint32_t* cList = NULL;
-
-	int aLength, bLength, cLength;
 
 	if(readLength < keySize)
 		return 0;
@@ -258,22 +301,33 @@ int cgm(char* read, int readLength, int keySize, uint32_t** matches)
 		exit(-1);
 	}
 
-	if(sections == 1){
-		strncpy(a, read, keySize/4);
-	}
-	else if(sections == 2){
-		strncpy(a, read, keySize/4);
+	strncpy(a, read, keySize/4);
+	aLength = db_query(database, a, aList);
+	
+	if(sections >= 2){
 		strncpy(b, &read[keySize/4], keySize/4);
-	}
-	else{
-		strncpy(a, read, keySize/4);
-		strncpy(b, &read[keySize/4], keySize/4);
-		strncpy(c, &read[keySize/2], keySize/4);
-		printf("%s\n", a);
-		printf("%s\n", b);
-		printf("%s\n", c);
+		bLength = db_query(database, b, bList);
 	}
 	
+	if(sections == 3){
+		strncpy(c, &read[keySize/2], keySize/4);
+		cLength = db_query(database, c, cList);
+
+		count = tripleMatch(aList, bList, cList, aLength, bLength, cLength, keySize, matches);
+
+		free(aList);
+		free(bList);
+		free(cList);
+	}
+	else if(sections == 2){
+		count = doubleMatch(aList, bList, aLength, bLength, keySize, matches);
+		free(aList);
+		free(bList);
+	}
+	else{
+		matches = &aList;
+		count = aLength;
+	}
 
 	free(a);
 	if(sections >= 2){
@@ -283,6 +337,7 @@ int cgm(char* read, int readLength, int keySize, uint32_t** matches)
 		}
 	}
 
+	return count;
 }
 
 /*
