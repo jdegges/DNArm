@@ -1,55 +1,87 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<stdint.h>
+#include</usr/include/stdint.h>
 #include<stdbool.h>
 
 int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, uint32_t** result)
 {
 	int i = 0, j = 0, k = 0, count = 0;
 	int max = aLength+bLength+cLength;
-
-	*result = (uint32_t*) malloc(sizeof(uint32_t)*max);
+	uint32_t* mem = NULL;
+	
+	mem = (uint32_t*) malloc(sizeof(uint32_t)*max);
+	
+	if(mem == NULL){
+		printf("Unable to allocate memory!\n");
+		exit(-1);
+	}
 
 	while(count < max)
 	{
-		if(i < aLength && (j >= bLength || a[i] < b[j]) && (k >= cLength || a[i] < c[k])){
-			*result[count] = a[i];
+		if(i < aLength && (j >= bLength || a[i] <= b[j]) && (k >= cLength || a[i] <= c[k])){
+			mem[count] = a[i];
 			i++;
 		}
-		else if(j < bLength && (k >= cLength || b[j] > c[k])){
-			*result[count] = b[j];
+		else if(j < bLength && (k >= cLength || b[j] <= c[k])){
+			mem[count] = b[j];
 			j++;
 		}
 		else{
-			*result[count] = c[k];
+			mem[count] = c[k];
 			k++;
 		}
 		count++;
 	}
 
+	*result = mem;
 	return count;
 }
+
+/*
+int main()
+{
+	uint32_t a[5] = {2, 5, 6, 7, 8};
+	uint32_t b[4] = {9, 12, 13, 110};
+	uint32_t c[3] = {14, 31, 33};
+
+	uint32_t* d;
+
+	int count = mergeLists(a, b, c, 5, 4, 3, &d);
+
+	fprintf(stderr, "Preparing output...\n");
+	int i;
+	for(i = 0; i < count; i++)
+		printf("%d\n", d[i]);
+
+	return 0;
+}
+
+*/
 
 int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches, int gap, int startOffset)
 {
 	int i = 0, j= 0, mLength = 0;
-	uint32_t* dubs;
+	uint32_t* dubs = NULL;
 
 	int mMax = aLength;
 	if(bLength < mMax)
 		mMax = bLength;
 
 	dubs = (uint32_t*) malloc(sizeof(uint32_t)*mMax);
+	if(dubs == NULL){
+		printf("Unable to allocate memory!\n");
+		exit(-1);
+	}
 
 	while(i < aLength && j < bLength){
 		while(j < bLength){
-			if(b[j] < a[i] + secLength + offset)
+			if(b[j] < a[i] + secLength + gap)
 				j++;
-			else if(b[j] > a[i] + secLength + offset)
+			else if(b[j] > a[i] + secLength + gap)
 				break;
 			else{
-				dubs[mLength] = a[i-startOffset];
+				dubs[mLength] = a[i]-startOffset;
 				mLength++;
 				break;
 			}
@@ -63,12 +95,38 @@ int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLengt
 	}
 
 	free(dubs);
+	return 0;
 
 }
+
+/*
+int main()
+{
+	uint32_t a[5] = {1, 25, 89, 210, 456};
+	uint32_t b[4] = {14, 24, 97, 218};
+
+	uint32_t* d;
+
+	int count = doubleMatch(a, b, 5, 4, 8, &d, 0, 0);
+
+	fprintf(stderr, "Preparing output...\n");
+	int i;
+	for(i = 0; i < count; i++)
+		printf("%d\n", d[i]);
+
+	return 0;
+}
+
+*/
+
 int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, int secLength, uint32_t** matches)
 {
 	int i = 0, j = 0, k = 0, mLength = 0, d12Length = 0, d23Length = 0, d13Length = 0, dLength;
-	uint32_t* trips, dub12, dub23, dub13, dubs;
+	uint32_t* trips = NULL;
+	uint32_t* dub12 = NULL;
+	uint32_t* dub23 = NULL;
+	uint32_t* dub13 = NULL;
+	uint32_t* dubs = NULL;
 
 	int mMax = aLength;
 	int dMax = aLength;
@@ -82,9 +140,13 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 
 	trips = (uint32_t*) malloc(sizeof(uint32_t)*mMax);
 	dub12 = (uint32_t*) malloc(sizeof(uint32_t)*dMax);
+	if(trips == NULL || dub12 == NULL){
+		printf("Unable to allocate memory!\n");
+		exit(-1);
+	}
 
 	while(i < aLength && j < bLength && k < cLength){
-		int ttemp = mLength;
+		int temp = mLength;
 
 		while(j < bLength && k < cLength){
 			if(b[j] < a[i] + secLength)
@@ -131,9 +193,12 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 
 	dLength = mergeLists(dub12, dub23, dub13, d12Length, d23Length, d13Length, &dubs);
 	
-	free(dub12);
-	free(dub23);
-	free(dub13);
+	if(dub12 != NULL)
+		free(dub12);
+	if(dub23 != NULL)
+		free(dub23);
+	if(dub13 != NULL)
+		free(dub13);
 	
 	*matches = dubs;
 	return dLength;
@@ -141,11 +206,36 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 
 }
 
-int cgm(char* read, int readLength, int keySize)
+/*
+int main()
+{
+	uint32_t a[5] = {1, 25, 89, 210, 456};
+	uint32_t b[4] = {8, 24, 97, 218};
+	uint32_t c[3] = {31, 32, 227};
+
+	uint32_t* d;
+
+	int count = tripleMatch(a, b, c, 5, 4, 3, 8, &d);
+
+	fprintf(stderr, "Preparing output...\n");
+	int i;
+	for(i = 0; i < count; i++)
+		printf("%d\n", d[i]);
+
+	return 0;
+}
+*/
+
+int cgm(char* read, int readLength, int keySize, uint32_t** matches)
 {
 	int sections, secLength;
-	char* a, b, c;
-	uint32_t* aList, bList, cList;
+	char* a;
+	char* b;
+	char* c;
+	uint32_t* aList = NULL;
+	uint32_t* bList = NULL;
+	uint32_t* cList = NULL;
+
 	int aLength, bLength, cLength;
 
 	if(readLength < keySize)
@@ -168,6 +258,21 @@ int cgm(char* read, int readLength, int keySize)
 		exit(-1);
 	}
 
+	if(sections == 1){
+		strncpy(a, read, keySize/4);
+	}
+	else if(sections == 2){
+		strncpy(a, read, keySize/4);
+		strncpy(b, &read[keySize/4], keySize/4);
+	}
+	else{
+		strncpy(a, read, keySize/4);
+		strncpy(b, &read[keySize/4], keySize/4);
+		strncpy(c, &read[keySize/2], keySize/4);
+		printf("%s\n", a);
+		printf("%s\n", b);
+		printf("%s\n", c);
+	}
 	
 
 	free(a);
@@ -179,3 +284,15 @@ int cgm(char* read, int readLength, int keySize)
 	}
 
 }
+
+/*
+int main()
+{
+	uint32_t* matches = NULL;
+	char read[6] = {'a','b' ,'c' ,'d' ,'e' ,'f' };
+
+	cgm(read, 24, 8, &matches);
+
+	return 0;
+}
+*/
