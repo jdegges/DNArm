@@ -29,7 +29,7 @@ int main(int argc, char **argv){
 	for(;;){
     // the first slot of input will be the last int read in the previous loop
 		int numRead = fread(input + 1, sizeof(uint32_t), INPUTLEN - 1, fp);
-		if (!numRead){
+		if (numRead != INPUTLEN - 1){
 			// Done, exit
 			return 1;
 		}
