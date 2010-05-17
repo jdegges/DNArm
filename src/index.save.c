@@ -7,6 +7,8 @@
 #define KEYLEN 32
 
 int main(int argc, char **argv){
+  uint64_t count = 0;
+
 	// Open file 
 	FILE *fp = fopen(argv[1], "r");
 	if (NULL == fp){
@@ -53,7 +55,7 @@ int main(int argc, char **argv){
 				uint32_t key = temp;
 				//printf("key:%llu\n", key);
 				//INSERT INTO DB
-				//db_insert(struct db *d, key, KEYLEN);
+				//db_insert(struct db *d, key, count++);
 			}
 		}
 
