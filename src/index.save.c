@@ -48,11 +48,9 @@ int main(int argc, char **argv){
 			//printf("%llu\n", whole);
 		
 			int j;
-			uint64_t temp;
 			for (j = 0; j < KEYLEN; j++){
 				// shift "whole" left by j places, then shift result right 32 places
-				temp = (whole << j) >> 32;
-				uint32_t key = temp;
+				uint64_t key = (whole << j) >> 32;
 				//printf("key:%llu\n", key);
 				//INSERT INTO DB
 				//db_insert(struct db *d, key, count++);
