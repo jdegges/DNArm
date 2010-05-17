@@ -42,7 +42,7 @@ uint32_t findkeys(uint32_t *input, int inlen){
 
 int main(int argc, char **argv){
     // Open file 
-    FILE *fp = fopen(argv[1], "r");
+    FILE *fp = fopen(argv[1], "rb");
     if (NULL == fp)
     {
 	printf("File open error!\n");
