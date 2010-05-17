@@ -38,6 +38,15 @@ AC_SUBST([CTB_LDADD], ["${PTHREAD_LIBS} ${LOOMLIB_LIBS}"])
 AC_SUBST([CTB_CFLAGS], ["${PTHREAD_CFLAGS} ${LOOMLIB_CFLAGS}"])
 AM_CONDITIONAL([BUILD_CTB], [test x$BUILD_CTB = xyes])
 
+# index
+#
+BUILD_INDEX=yes
+AC_ARG_WITH([ctb],
+  AC_HELP_STRING([--without-ctb], [Do not build ctb.]),
+  [BUILD_INDEX=no])
+AC_SUBST([BUILD_INDEX], [${BUILD_INDEX}])
+AM_CONDITIONAL([BUILD_INDEX], [test x$BUILD_INDEX = xyes])
+
 # memdb-test
 #
 BUILD_MEMDB_TEST=yes
@@ -74,6 +83,7 @@ echo
 echo "DNArm build summary"
 echo "==================="
 echo "ctb           : $BUILD_CTB"
+echo "index         : $BUILD_INDEX"
 echo "memdb-test    : $BUILD_MEMDB_TEST"
 echo "readgen       : $BUILD_READGEN"
 echo
