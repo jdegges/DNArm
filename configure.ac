@@ -25,6 +25,15 @@ PKG_CHECK_MODULES([LOOMLIB], [loomlib], [HAVE_LOOMLIB=yes], [LOOMLIB_LIBS=no])
 
 # conditionally mark binaries for building
 
+# cgm
+#
+BUILD_CGM=yes
+AC_ARG_WITH([cgm],
+  AC_HELP_STRING([--without-cgm], [Do not build cgm.]),
+  [BUILD_CGM=no])
+AC_SUBST([BUILD_CGM], [${BUILD_CGM}])
+AM_CONDITIONAL([BUILD_CGM], [test x$BUILD_CGM = xyes])
+
 # ctb
 #
 BUILD_CTB=no
@@ -73,6 +82,7 @@ AC_OUTPUT
 echo
 echo "DNArm build summary"
 echo "==================="
+echo "cgm           : $BUILD_CGM"
 echo "ctb           : $BUILD_CTB"
 echo "memdb-test    : $BUILD_MEMDB_TEST"
 echo "readgen       : $BUILD_READGEN"
