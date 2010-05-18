@@ -5,10 +5,12 @@
 #include<stdbool.h>
 #include "db.h"
 
+
 int editValues(uint32_t* list, uint32_t length, int offset)
 {
 	int i, j = 0;
-
+	
+	/* adjust values to position where read would start */
 	for(i = 0; i < length; i++){
 		if(list[i] > offset){
 			list[j] = list[i] - offset;
@@ -22,8 +24,10 @@ int editValues(uint32_t* list, uint32_t length, int offset)
 int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, uint32_t** result)
 {
 	int i = 0, j = 0, k = 0, count = 0;
-	int max = aLength+bLength+cLength;
 	uint32_t* mem = NULL;
+
+	/* result should be combined length of all lists */
+	int max = aLength+bLength+cLength;
 	
 	mem = (uint32_t*) malloc(sizeof(uint32_t)*max);
 	
@@ -32,6 +36,7 @@ int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, 
 		exit(-1);
 	}
 
+	/* add items in increasing order */
 	while(count < max)
 	{
 		if(i < aLength && (j >= bLength || a[i] <= b[j]) && (k >= cLength || a[i] <= c[k])){
@@ -49,36 +54,18 @@ int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, 
 		count++;
 	}
 
+	/* return the size of the results list */
 	*result = mem;
 	return count;
 }
 
-/*
-int main()
-{
-	uint32_t a[5] = {2, 5, 6, 7, 8};
-	uint32_t b[4] = {9, 12, 13, 110};
-	uint32_t c[3] = {14, 31, 33};
-
-	uint32_t* d;
-
-	int count = mergeLists(a, b, c, 5, 4, 3, &d);
-
-	fprintf(stderr, "Preparing output...\n");
-	int i;
-	for(i = 0; i < count; i++)
-		printf("%d\n", d[i]);
-
-	return 0;
-}
-
-*/
 
 int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches, int gap, int startOffset)
 {
 	int i = 0, j= 0, mLength = 0;
 	uint32_t* dubs = NULL;
 
+	/* maximum length is length of smaller list */
 	int mMax = aLength;
 	if(bLength < mMax)
 		mMax = bLength;
@@ -89,6 +76,7 @@ int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLe
 		exit(-1);
 	}
 
+	/* loop through the items in the first list looking for matching items in the second list */
 	while(i < aLength && j < bLength){
 		while(j < bLength){
 			if(b[j] < a[i] + secLength + gap)
@@ -104,6 +92,7 @@ int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLe
 		i++;
 	}
 
+	/* if results were found, return them, otherwise free the memory */
 	if(mLength > 0){
 		*matches = dubs;
 		return mLength;
@@ -133,25 +122,6 @@ int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLengt
 
 }
 
-/*
-int main()
-{
-	uint32_t a[5] = {1, 25, 89, 210, 456};
-	uint32_t b[4] = {14, 24, 97, 218};
-
-	uint32_t* d;
-
-	int count = doubleMatch(a, b, 5, 4, 8, &d, 0, 0);
-
-	fprintf(stderr, "Preparing output...\n");
-	int i;
-	for(i = 0; i < count; i++)
-		printf("%d\n", d[i]);
-
-	return 0;
-}
-
-*/
 
 int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, int secLength, uint32_t** matches)
 {
@@ -163,6 +133,7 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 	uint32_t* dubs = NULL;
 	uint32_t* sing = NULL;
 
+	/* maximum length is length of smallest list */
 	int mMax = aLength;
 	int dMax = aLength;
 
@@ -180,6 +151,7 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 		exit(-1);
 	}
 
+	/* loop through the lists to find triple matches and double matches between 1st and 2nd list */
 	while(i < aLength && j < bLength && k < cLength){
 		int temp = mLength;
 
@@ -215,12 +187,14 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 
 	}
 	
+	/* if triple matches were found return them, and free the double matches */
 	if(mLength > 0){
 		free(dub12);
 		*matches = trips;
 		return mLength;
 	}
 
+	/* otherwise free the triple matches memory, find remaining double matches, and merge results */
 	free(trips);
 
 	d23Length = doubleMatchAid(b, c, bLength, cLength, secLength, &dub23, 0, secLength);
@@ -241,6 +215,7 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 		return dLength;
 	}
 
+	/* if still no matches, combine the input lists and return them as results */
 	bLength = editValues(b, bLength, secLength);
 	cLength = editValues(c, cLength, 2*secLength);
 	sLength = mergeLists(a, b, c, aLength, bLength, cLength, &sing);
@@ -251,25 +226,6 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 
 }
 
-/*
-int main()
-{
-	uint32_t a[5] = {1, 25, 89, 210, 456};
-	uint32_t b[4] = {8, 24, 97, 218};
-	uint32_t c[3] = {31, 32, 227};
-
-	uint32_t* d;
-
-	int count = tripleMatch(a, b, c, 5, 4, 3, 8, &d);
-
-	fprintf(stderr, "Preparing output...\n");
-	int i;
-	for(i = 0; i < count; i++)
-		printf("%d\n", d[i]);
-
-	return 0;
-}
-*/
 
 int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* database)
 {
@@ -281,6 +237,7 @@ int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* 
 	uint32_t* bList = NULL;
 	uint32_t* cList = NULL;
 
+	/* determine the number of sections (0-3) and allocate memory for each key */
 	if(readLength < keySize)
 		return 0;
 	if(readLength >= keySize){
@@ -301,6 +258,7 @@ int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* 
 		exit(-1);
 	}
 
+	/* copy the reads into the key strings and query database */
 	strncpy(a, read, keySize/4);
 	aLength = db_query(database, a, aList);
 	
@@ -313,6 +271,7 @@ int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* 
 		strncpy(c, &read[keySize/2], keySize/4);
 		cLength = db_query(database, c, cList);
 
+		/* if 3 sections attempt to find a triple match */
 		count = tripleMatch(aList, bList, cList, aLength, bLength, cLength, keySize, matches);
 
 		free(aList);
@@ -320,15 +279,18 @@ int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* 
 		free(cList);
 	}
 	else if(sections == 2){
+		/* if there are 2 sections attempt to find a double match */
 		count = doubleMatch(aList, bList, aLength, bLength, keySize, matches);
 		free(aList);
 		free(bList);
 	}
 	else{
+		/* if there's only 1 section, can't narrow results */
 		matches = &aList;
 		count = aLength;
 	}
 
+	/* free any allocated memory and return the number items in matches */
 	free(a);
 	if(sections >= 2){
 		free(b);
@@ -340,14 +302,4 @@ int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* 
 	return count;
 }
 
-/*
-int main()
-{
-	uint32_t* matches = NULL;
-	char read[6] = {'a','b' ,'c' ,'d' ,'e' ,'f' };
 
-	cgm(read, 24, 8, &matches);
-
-	return 0;
-}
-*/
