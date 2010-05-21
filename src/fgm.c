@@ -5,7 +5,7 @@
 //
 //MIT LICENCE...
 //
-#define THRESHOLD 6
+#define THRESHOLD 5
 #define INDEL_THRESHOLD 29
 
 //so, find locations...
@@ -26,6 +26,11 @@
 //helper... this just assists with the match list assignment,ins/del detection (+/- 3 shift), and some prep work (bit alignment, surrounding data retrieval, etc). the real work is done in diffCalc().
 //list is the complete reference genome (i think)...
 
+
+
+
+
+//=============================================================================
 //--list is the complete base genome
 //--readlen is the length of the read in nucleotides. THIS SHOULD BE IN MULTIPLES OF 16 FOR EXPECTED BEHAVIOR.
 //--matchloclst is a list of match locations; the units are in nucleotides. this number indicates the START of the sequence, regardless of where the index was actually mapped to.
@@ -165,47 +170,82 @@
 		
 		if(insH <= THRESHOLD || insL <= THRESHOLD)
 		{
-			breakDetect(&(diffSeq[len*lowest]), len);//&(diffSeq[len*highest]), len);	//ORDER MATTERS HERE. for ins, the low index goes first.
+			indelLoc = breakDetect(&(diffSeq[len*highest]), &(diffSeq[len*highest]), len);	//ORDER MATTERS HERE. for ins, the high index goes first.
 			ins = 1;		//		######### PLACEHOLDER. this should be changed to modify some element of the data structure that gets passed back, to indicate an insertion.
 		}
 		else if (delH <= THRESHOLD || delL <= THRESHOLD)
 		{
-			breakDetect(&(diffSeq[len*highest]), len);//&(diffSeq[len*lowest]), len);	//ORDER MATTERS HERE. for del, the high index goes first.
+			indelLoc = breakDetect(&(diffSeq[len*lowest]), &(diffSeq[len*lowest]), len);	//ORDER MATTERS HERE. for del, the low index goes first.
 			del = 1;		//		######### PLACEHOLDER. this should be changed to modify some element of the data structure that gets passed back, to indicate a deletion.
-			
 		}
 		else	//if neither of these is true for some reason, then the previous subsequence match was probably a fluke, so jump out.
 			continue;
 		
+		//the indelLoc must be added to the start position to obtain the absolute location of the indel, relative to the absolute beginning of the REFERENCE GENOME. 
+		//
 		indelLen = highest - lowest;	//obtain the length of the indel.
 		
+		//by the time we get here, we have the location of the indel, the length of the indel, and the proper diff sequences. we just need to calculate the actual differences. 
+		//arguments we should pass to the error detector for a case WITH indels:actual read sequence,  lead and follow diff sequences, indel location, indel length, flag indicating insertion (0 == deletion).
 		
 		
 	}	//the end of calculation for one match possibility
 	return NULL;	//if we're here, we had no luck. oh well.
 }
+//
+//it should be noted that all positions returned will be relative to the beginning of the REFERENCE genome!!!
+//
 
-
-//this will return the location at which an insertion or deletion probably occured.
-unsigned int breakDetect(uint32_t * leadSeq, int len)//uint32_t * followSeq, int len)
+//this will return the location at which an insertion or deletion probably occured. we search from the end of a sequence, because the bit manipulation is easier.
+unsigned int breakDetect(uint32_t * leadSeq, uint32_t * followSeq, int len)
 {
-	int transition = 0, prev = 0;; //flag for transition detection. this gets set to one when we get 
-	int persistence;	//incremented with each match discovered, decremented (downto 0 with each match discovered)
-	int total;	//incremented with each match discovered
 	int x, i;
-	uint32_t lead;//, follow;	//temp
+	uint32_t trueSeq;//, follow;	//temp
+	int temp;
+	int primeCount = 16;	//the lowest number of disagreements we've found so far... initialize to a high value.
+	int primeLoc;	//the best location we've found so far.
+	uint32_t leadMask, followMask;
+	uint32_t lead, follow;	//the lead/follow sequences that we'll be using for comparison. these are of length 16 nucleotides, but in each iteration of the loop we want to shift over by only 8... so we have to screw with them a bit.
+	int aLen = 2 * len - 1;
 	
-	for(x = 0; x < len; x++)	//for all of the bins...
-	{
-		lead = leadSeq[x];
-//		follow = followSeq[x];
-		
-		for(i = 0; i < 16; i++)	//16 neucleotide difference sites we're going to investigate.
+//	for(x = len - 1; x >= 0; x--)	//for all of the bins...
+	for(x = 0; x < aLen; x++)	//for all the bins...
+	{	
+	
+		if(x%2)	//if this is an odd iteration, we'll want to do a compound evaluation.
 		{
-			transition = (lead & 0x80000000) ^ (transition ^ prev);//(//((lead & (lead << 2)) >> 30) &
-			lead <<= 2;
-//			follow <<= 2;
+			lead = ((leadSeq[x/2] & 0x00005555) << 16) | ((leadSeq[x/2 + 1] & 0x55550000) >> 16);	//create the compound diff sequences.
+			follow = ((followSeq[x/2] & 0x00005555) << 16) | ((followSeq[x/2 + 1] & 0x55550000) >> 16);	
 		}
+		else
+		{
+			lead = leadSeq[x/2];	//assign the unaltered diff sequences.
+			follow = followSeq[x/2];
+		}
+		//commentary: compound diff sequence evaluations are done in order to reliably detect indels that occur on or near boundaries of uint32_t's.
+		
+		//on each bin, count all of the set bits. if it's above THRESHOLD/2, then we want to look here.
+		if(smallCount(&lead)) > (THRESHOLD/2))
+		{
+
+//			lead << (32 - totalSet*2 - 2*THRESHOLD/len);	//shift over until we're in the neighborhood of something interesting.
+//maybe put this back in?
+			leadMask = 0x00000000;		//start with the follow mask as the entire sequence...
+			followMask = 0x55555555;
+			for(i = 0; i < 16; i++)	//mask shifting...
+			{
+				trueSeq = leadMask & lead | followMask & follow;	//integrate the two sequences...
+				if((temp = smallCount(&trueSeq)) < primeCount)	//if we've found a better match...
+				{
+					primeLoc = i;
+					primeCount = temp;	//save the min count and the location.
+				}
+				
+				leadMask = (leadMask >> 2) & 0x40000000;	//shift the mask.
+				followMask >>= 2;	//shift the mask.
+			}
+			//by this point, we will have found the masking location that gives the minimum disagreement.
+			return primeLoc + 8 * x;	//the proper location (in nucleotide places) will be here. 8*x is the offset (how much we shifted over in each loop)
 	}
 }
 
@@ -218,6 +258,8 @@ unsigned int smallCount(uint32_t diff)
 	return ((diff + (diff >> 4) & 0xF0F0F0F) * 0x1010101) >> 24; // count
 }
 //-----------------------------------READ LENGTH IS 32 or 64 bits (let's say 64. thats a nice number.)!
+
+
 
 //args are the aligned reference sequence, the read sequence, and the number of uint32_t's we need to compare.
 //* passbackdata 
@@ -247,39 +289,3 @@ unsigned int diffCalc(uint32_t * refSeq, uint32_t * rdSeq, int readLen, uint32_t
 
 
 //* PASSBACKDATA matchdetail(int readlen, int32_t rdSeq[4], int32_t matchloc, uint32_t *list, 
-
-
-
-//ALGORITHM
-
-//this function will be called with a single read sequence (length N), and passed a list of locations where there's a possible match. (will it also be called with a locked location (beginning of index zone, and length of lock) displacement from the beginning of the read sequence?) we can check if its at the very beginning, the end, or somewhere in the middle. 
-//if its at the beginning, the "head" will be hard-locked in place, while the tail is flexible +/- 3. 
-//if its at the end, the "tail" will be hard-locked in place, while the head is flexible +/- 3. 
-//if its at the middle, both the head and the tail are flexible (+/- 3 on BOTH ends for simplicity)
-
-//this part is probably INACCURATE. 2 versions should suffice.
-//TENTATIVE: there will be 7 versions of this! yes, 7. one for each shift-operation of detecting ins/del segments. fgm0, fgmR1, fgmR2, fgmR3, fgmL1, fgmL2, fgmL3. these will be called from a helper/setup function fgm().
-
-//this part is probably INACCURATE. 1 version should suffice!
-//there will be 2 versions of this. one will do a straight fast-match (run through sequence, throw back a sub-threshold match). the second will account for ins/del, by matching from the front of the sequence, and also from the theoretical end of the sequence +/- 3 locations.
-
-//there will be only one version of this... we'll start with our zero displacement match effort for all possible match locations, which will use our anchor point but not shift anything. basically, this sequence will be XORed with the relevant section of the reference genome, to detect discrepancies. then, we will count all disagreeing bits (using shift ops). basically, the lowest sub-threshold match will be passed back as the successful match. an exception, of course, is that an exact match will instantly break out and be passed back (the returned data structure will note that the ). however, if we don't have a sub-threshold match, we'll go to our fallback strategy, which is more in depth. after retrieving any additonal data (surround data retrieval - nucleotide bins forward or behind the possible match location), we'll start by XORing the base genome with [read sequence >> 3, >>2, >>1, (no-shift data has been saved, so dont redo), <<1, <<2, and <<3]. we'll first see if we can detect the two that have the least number of mismatches (minimized number of 1's set in the data), and once these are obtained (and therefore having learned the size of the discrepancy), we'll extract the exact mismatch location using the inferred ins/del size we just extracted - we'll check the first low-discrepancy location against with the second low-discrepancy location that's been shifted the requisite number of places. by detecting where a switchover has taken place (where a close match on one sequence shifts to a string of bad matches, and a string of bad matches on the second one shifts to a close match), we can find a detailed location and size of an insertion or deletion.
-
-//=========
-//matrices?
-//=========
-
-//------------
-//(some data alignment will be required here when data is retrieved from the database)
-	//i.e. if a nucleotide string is stored as ints... (__ denotes a barier between two int storage bins) 00|10|01|11|10|10|01|10|00|01|11|11|01|10|10|11__00|10|01|11|10|10|01|10|00|01|11|11|01|10|10|11
-	//but we want to capture a sequence that runs across a gap, like: 00|10|01|11|(*10|10|01|10|00|01|11|11|01|10|10|11__00|10|01|11*)|10|10|01|10|00|01|11|11|01|10|10|11
-	//we'll have to shift our stuff over, etc...
-
-//for each match location
-//------------	
-	
-	
-	//MAYBE NOT THIS-->//step through read sequence. keep track of total number of mismatches, and also number of mismatches in the last 5 nucleotides.
-	//xor our sequence with our 
-
-//end match location loop
