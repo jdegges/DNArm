@@ -6,7 +6,7 @@ AC_INIT([DNArm], [dev], [BUG-REPORT-ADDRESS])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_SRCDIR([src/ctb.c])
 AC_CONFIG_HEADERS([config.h])
-PKG_PROG_PKG_CONFIG([0.22])
+PKG_PROG_PKG_CONFIG([0.21])
 
 # Checks for programs.
 AC_PROG_CC
