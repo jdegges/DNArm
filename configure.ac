@@ -47,8 +47,8 @@ AM_CONDITIONAL([BUILD_CTB], [test x$BUILD_CTB = xyes])
 # index
 #
 BUILD_INDEX=yes
-AC_ARG_WITH([ctb],
-  AC_HELP_STRING([--without-ctb], [Do not build ctb.]),
+AC_ARG_WITH([index],
+  AC_HELP_STRING([--without-index], [Do not build index.]),
   [BUILD_INDEX=no])
 AC_SUBST([BUILD_INDEX], [${BUILD_INDEX}])
 AM_CONDITIONAL([BUILD_INDEX], [test x$BUILD_INDEX = xyes])
@@ -61,6 +61,19 @@ AC_ARG_WITH([memdb-test],
   [BUILD_MEMDB_TEST=no])
 AC_SUBST([BUILD_MEMDB_TEST], [${BUILD_MEMDB_TEST}])
 AM_CONDITIONAL([BUILD_MEMDB_TEST], [test x$BUILD_MEMDB_TEST = xyes])
+
+# pindex
+#
+BUILD_PINDEX=no
+AS_IF([test x$HAVE_PTHREADS = xyes && test x$HAVE_LOOMLIB = xyes],
+  [BUILD_PINDEX=yes])
+AC_ARG_WITH([pindex],
+  AC_HELP_STRING([--without-pindex], [Do not build pindex.]),
+  [BUILD_PINDEX=no])
+AC_SUBST([BUILD_PINDEX], [${BUILD_PINDEX}])
+AC_SUBST([PINDEX_LDADD], ["${PTHREAD_LIBS} ${LOOMLIB_LIBS}"])
+AC_SUBST([PINDEX_CFLAGS], ["${PTHREAD_CFLAGS} ${LOOMLIB_CFLAGS}"])
+AM_CONDITIONAL([BUILD_PINDEX], [test x$BUILD_PINDEX = xyes])
 
 # readgen
 #

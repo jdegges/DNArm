@@ -17,6 +17,13 @@ bin_PROGRAMS += memdb-test
 memdb_test_SOURCES = db-test.c memdb.c
 endif
 
+if BUILD_PINDEX
+bin_PROGRAMS += pindex
+pindex_SOURCES = pindex.c memdb.c
+pindex_LDADD = $(PINDEX_LDADD)
+pindex_CFLAGS = $(PINDEX_CFLAGS)
+endif
+
 if BUILD_READGEN
 bin_PROGRAMS += readgen
 readgen_SOURCES = readgen.c
