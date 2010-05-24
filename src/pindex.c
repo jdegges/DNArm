@@ -6,6 +6,7 @@
 #include <loomlib/thread_pool.h>
 #include <errno.h>
 #include <string.h>
+#include <db.h>
 
 #define BUFLEN 1024
 #define INPUTLEN 1024
@@ -20,6 +21,7 @@ struct find_args
 };
 
 static pthread_mutex_t print_mutex;
+static struct db *db;
 
 static void findkeys(void *t){
 
@@ -46,8 +48,8 @@ static void findkeys(void *t){
 	    temp = (whole << j) >> 32;
 	    uint32_t key = temp;
 	    //INSERT INTO DB
-      	    //db_insert(struct db *d, key, pos);
-	    printf("key: %llu, pos  %d\n", key, pos);
+      	    db_insert(db, key, pos);
+	    //printf("key: %llu, pos  %d\n", key, pos);
 	    pos++;
         }
 //	pthread_mutex_unlock(&print_mutex);
@@ -59,7 +61,9 @@ static void findkeys(void *t){
 int main(int argc, char **argv){
     struct thread_pool *pool;
     int ret_val;
+    uint32_t *input;
 
+    assert (db = db_open (NULL, NUM_THREADS));
     assert ( pool = thread_pool_new(NUM_THREADS));
 
     if (0 != (ret_val = pthread_mutex_init (&print_mutex, NULL)))
@@ -81,7 +85,7 @@ int main(int argc, char **argv){
 
     for(;;){	
         // allocate space to hold input from file2
-        uint32_t *input = (uint32_t*) malloc(INPUTLEN*sizeof(uint32_t));
+        input = (uint32_t*) malloc(INPUTLEN*sizeof(uint32_t));
         if (NULL == input)
         {   
 	    printf("Unable to allocate input buf\n");
@@ -118,7 +122,7 @@ int main(int argc, char **argv){
 
     if (0 != (ret_val = pthread_mutex_destroy (&print_mutex)))
     {
-        printf("pthread_mutex_destroy: %d\n", ret-val);
+        printf("pthread_mutex_destroy: %d\n", ret_val);
     }
 
     if (0 != fclose(fp))
@@ -126,5 +130,6 @@ int main(int argc, char **argv){
         printf("%s", strerror(errno));
     }
 
+    assert (db_close (db));
     return 0;
 }
