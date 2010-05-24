@@ -31,6 +31,15 @@ AC_CHECK_HEADER([CL/cl.h],
 
 # conditionally mark binaries for building
 
+# cgm
+#
+BUILD_CGM=yes
+AC_ARG_WITH([cgm],
+  AC_HELP_STRING([--without-cgm], [Do not build cgm.]),
+  [BUILD_CGM=no])
+AC_SUBST([BUILD_CGM], [${BUILD_CGM}])
+AM_CONDITIONAL([BUILD_CGM], [test x$BUILD_CGM = xyes])
+
 # ctb
 #
 BUILD_CTB=no
@@ -111,6 +120,7 @@ AC_OUTPUT
 echo
 echo "DNArm build summary"
 echo "==================="
+echo "cgm           : $BUILD_CGM"
 echo "ctb           : $BUILD_CTB"
 echo "index         : $BUILD_INDEX"
 echo "memdb-test    : $BUILD_MEMDB_TEST"

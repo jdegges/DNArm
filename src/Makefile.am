@@ -1,5 +1,10 @@
 bin_PROGRAMS =
 
+if BUILD_CGM
+bin_PROGRAMS += cgm
+cgm_SOURCES = cgm.c
+endif
+
 if BUILD_CTB
 bin_PROGRAMS += ctb
 ctb_SOURCES = ctb.c
