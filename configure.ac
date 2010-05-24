@@ -6,7 +6,7 @@ AC_INIT([DNArm], [dev], [BUG-REPORT-ADDRESS])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 AC_CONFIG_SRCDIR([src/ctb.c])
 AC_CONFIG_HEADERS([config.h])
-PKG_PROG_PKG_CONFIG([0.22])
+PKG_PROG_PKG_CONFIG([0.21])
 
 # Checks for programs.
 AC_PROG_CC
@@ -22,6 +22,12 @@ ACX_PTHREAD([AC_SUBST([CC], ["${PTHREAD_CC}"]) HAVE_PTHREADS=yes],
 #
 PKG_CHECK_MODULES([LOOMLIB], [loomlib], [HAVE_LOOMLIB=yes], [LOOMLIB_LIBS=no])
 
+# check for OpenCL
+#
+AC_CHECK_HEADER([CL/cl.h],
+  [AC_CHECK_LIB([OpenCL], [clGetDeviceIDs],
+    [AC_SUBST([LIBOPENCL_LIBS], ["-lOpenCL"]) HAVE_LIBOPENCL=yes],
+    [HAVE_LIBOPENCL=no])])
 
 # conditionally mark binaries for building
 
@@ -56,6 +62,16 @@ AC_ARG_WITH([readgen],
 AC_SUBST([BUILD_READGEN], [${BUILD_READGEN}])
 AM_CONDITIONAL([BUILD_READGEN], [test x$BUILD_READGEN = xyes])
 
+# samplecl
+BUILD_SAMPLECL=no
+AS_IF([test x$HAVE_LIBOPENCL = xyes], [BUILD_SAMPLECL=yes])
+AC_ARG_WITH([samplecl],
+  AC_HELP_STRING([--without-samplecl], [Do not build samplecl.]),
+  [BUILD_SAMPLECL=no])
+AC_SUBST([BUILD_SAMPLECL], [${BUILD_SAMPLECL}])
+AC_SUBST([SAMPLECL_LDADD], ["${LIBOPENCL_LIBS}"])
+AM_CONDITIONAL([BUILD_SAMPLECL], [test x$BUILD_SAMPLECL = xyes])
+
 # Checks for header files.
 AC_CHECK_HEADERS([stdlib.h])
 
@@ -76,4 +92,5 @@ echo "==================="
 echo "ctb           : $BUILD_CTB"
 echo "memdb-test    : $BUILD_MEMDB_TEST"
 echo "readgen       : $BUILD_READGEN"
+echo "samplecl      : $BUILD_SAMPLECL"
 echo
