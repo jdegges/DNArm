@@ -74,14 +74,6 @@ int main(int argc, char **argv){
 	return -1;
     }
 
-
-    // allocate space to hold input from file2
-    uint32_t *input = (uint32_t*) malloc(INPUTLEN*sizeof(uint32_t));
-    if (NULL == input)
-    {
-	printf("Unable to allocate input buf\n");
-    }
-
     int  numRead;
     long int filepos;
 
