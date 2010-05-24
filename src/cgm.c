@@ -226,7 +226,7 @@ int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength,
 
 }
 
-
+#if 0
 int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* database)
 {
 	int sections, secLength, aLength, bLength, cLength, count;
@@ -301,5 +301,38 @@ int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* 
 
 	return count;
 }
+#endif
 
+/* lets assume a few things
+ *   1. readLength = 12 bytes (48 bases)
+ *      uint32_t read[] = { key1, key2, key3 };
+ *   2. keySize = 4 bytes (16 bases)
+ */
 
+int cgm48(uint32_t* read, uint32_t** matches, struct db* database)
+{
+	const int keySize = 16;
+  int aLength, bLength, cLength, count;
+  uint32_t* aList = NULL;
+  uint32_t* bList = NULL;
+  uint32_t* cList = NULL;
+
+  /* query database */
+  aLength = db_query(database, read[0], &aList);
+  bLength = db_query(database, read[1], &bList);
+  cLength = db_query(database, read[2], &cList);
+
+  /* if 3 sections attempt to find a triple match */
+  count = tripleMatch(aList, bList, cList, aLength, bLength, cLength, keySize, matches);
+
+  free(aList);
+  free(bList);
+  free(cList);
+
+  return count;
+}
+
+int main (void)
+{
+	return 0;
+}
