@@ -260,16 +260,16 @@ int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* 
 
 	/* copy the reads into the key strings and query database */
 	strncpy(a, read, keySize/4);
-	aLength = db_query(database, a, aList);
+	aLength = db_query(database, a, &aList);
 	
 	if(sections >= 2){
 		strncpy(b, &read[keySize/4], keySize/4);
-		bLength = db_query(database, b, bList);
+		bLength = db_query(database, b, &bList);
 	}
 	
 	if(sections == 3){
 		strncpy(c, &read[keySize/2], keySize/4);
-		cLength = db_query(database, c, cList);
+		cLength = db_query(database, c, &cList);
 
 		/* if 3 sections attempt to find a triple match */
 		count = tripleMatch(aList, bList, cList, aLength, bLength, cLength, keySize, matches);
