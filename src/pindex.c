@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <pthread.h>
 #include <loomlib/thread_pool.h>
+#include <errno.h>
+#include <string.h>
 
 #define BUFLEN 1024
 #define INPUTLEN 1024
@@ -113,6 +115,16 @@ int main(int argc, char **argv){
     free(input);
     assert (thread_pool_terminate (pool));
     thread_pool_free (pool);
+
+    if (0 != (ret_val = pthread_mutex_destroy (&print_mutex)))
+    {
+        printf("pthread_mutex_destroy: %d\n", ret-val);
+    }
+
+    if (0 != fclose(fp))
+    {
+        printf("%s", strerror(errno));
+    }
 
     return 0;
 }
