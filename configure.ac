@@ -114,6 +114,7 @@ echo "==================="
 echo "ctb           : $BUILD_CTB"
 echo "index         : $BUILD_INDEX"
 echo "memdb-test    : $BUILD_MEMDB_TEST"
+echo "pindex        : $BUILD_PINDEX"
 echo "readgen       : $BUILD_READGEN"
 echo "samplecl      : $BUILD_SAMPLECL"
 echo
