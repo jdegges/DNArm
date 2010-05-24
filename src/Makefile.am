@@ -21,3 +21,10 @@ if BUILD_READGEN
 bin_PROGRAMS += readgen
 readgen_SOURCES = readgen.c
 endif
+
+if BUILD_SAMPLECL
+bin_PROGRAMS += samplecl
+samplecl_SOURCES = samplecl.c
+samplecl_LDADD = $(SAMPLECL_LDADD)
+samplecl_CFLAGS = $(SAMPLECL_CFLAGS)
+endif
