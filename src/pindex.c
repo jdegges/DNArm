@@ -8,6 +8,8 @@
 #include <string.h>
 #include <db.h>
 
+#include "cgm.c"
+
 #define BUFLEN 1024
 #define INPUTLEN 1024
 #define KEYLEN 32
@@ -57,6 +59,53 @@ static void findkeys(void *t){
 
 }
 
+static void test_index(const char *path)
+{
+	FILE *fp = fopen (path, "rb");
+	uint32_t *input;
+
+	for (;;) {
+    int i;
+		input = malloc ((sizeof *input) * INPUTLEN);
+		if (NULL == input)
+		{
+			printf ("Out of memory\n");
+			exit (EXIT_FAILURE);
+		}
+
+		int curr_pos = ftell (fp);
+		int numRead = fread (input, sizeof *input, INPUTLEN, fp);
+		if (0 == numRead)
+			break;
+
+		for (i = 0; i < numRead; i++)
+		{
+			int pos = curr_pos + i*16;
+			uint32_t *p = NULL;
+			uint32_t *values = NULL;
+			int32_t count = db_query (db, input[i], &values);
+
+			if (count <= 0)
+			{
+				printf ("Error querying.\n");
+				exit (EXIT_FAILURE);
+			}
+
+			p = values;
+
+			do
+			{
+				if (pos == *p)
+					break;
+			} while (++p < values);
+
+			if (values <= p)
+				printf ("Didn't find data I put into the db\n");
+
+			free (values);
+		}
+	}
+}
 
 int main(int argc, char **argv){
     struct thread_pool *pool;
@@ -130,6 +179,7 @@ int main(int argc, char **argv){
         printf("%s", strerror(errno));
     }
 
+    test_index (argv[1]);
     assert (db_close (db));
     return 0;
 }
