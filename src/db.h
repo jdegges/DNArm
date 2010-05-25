@@ -1,17 +1,38 @@
-#ifndef _H_DB_FOO
-#define _H_DB_FOO
+#ifndef _DB_H
+#define _DB_H
 
-#include <stdlib.h>
-#include <gdbm.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 
-void* db_open(char *name, const int read);
+struct db;
 
-void db_close(void* dbf);
-void dbase_store(GDBM_FILE dbf,uint32_t key, uint32_t value);
+/*
+ * Open up a db that can be accessed by parallel threads concurrently.
+ * Returns NULL if some error occurred.
+ */
+struct db *
+db_open (char *path, const int parallel);
 
-char* dbase_fetch(GDBM_FILE dbf, uint32_t key, uint32_t **value);
+/*
+ * Close db.
+ * Returns false if some error occurred, true otherwise.
+ */
+bool
+db_close (struct db *d);
+
+/*
+ * Insert the key-value pair into the db.
+ * Returns true if successfully inserted, false otherwise.
+ */
+bool
+db_insert (struct db *d, const uint32_t key, const uint32_t value);
+
+/*
+ * Query for all values associated with key.
+ * db_query() allocates space for all the items in values and returns the total
+ * number of items. Upon error -1 is returned.
+ */
+int32_t
+db_query (struct db *d, const uint32_t key, uint32_t **values);
 
 #endif
