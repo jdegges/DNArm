@@ -15,7 +15,7 @@ struct db
 };
 
 struct db *
-db_open (const char *path, const int parallel)
+db_open (char *path, const int parallel)
 {
   struct db *d = malloc (sizeof *d);
 

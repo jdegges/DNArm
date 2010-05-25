@@ -13,8 +13,12 @@ ctb_CFLAGS = $(CTB_CFLAGS)
 endif
 
 if BUILD_INDEX
+if BUILD_TCADB_TEST
 bin_PROGRAMS += index
-index_SOURCES = index.c
+index_SOURCES = index.c tcadb.c
+index_LDADD = $(TCADB_TEST_LDADD)
+index_CFLAGS = $(TCADB_TEST_CFLAGS)
+endif
 endif
 
 if BUILD_MEMDB_TEST
@@ -39,4 +43,11 @@ bin_PROGRAMS += samplecl
 samplecl_SOURCES = samplecl.c
 samplecl_LDADD = $(SAMPLECL_LDADD)
 samplecl_CFLAGS = $(SAMPLECL_CFLAGS)
+endif
+
+if BUILD_TCADB_TEST
+bin_PROGRAMS += tcadb-test
+tcadb_test_SOURCES = db-test.c tcadb.c
+tcadb_test_LDADD = $(TCADB_TEST_LDADD)
+tcadb_test_CFLAGS = $(TCADB_TEST_CFLAGS)
 endif
