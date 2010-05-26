@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <endian.h>
 
 #define BUFLEN 1024
 #define INPUTLEN 1024
@@ -14,20 +15,12 @@ static struct db *db;
 int gpos = 0;
 
 void findkeys(uint32_t *input, int inlen){
-	uint32_t *firstptr = input;
-  uint32_t *secondptr = input + 1;
-
   while (--inlen) {
-    /*
-    uint64_t *p = (uint64_t *) firstptr++;
-    uint64_t whole = *p;
-    */
-		uint64_t next = *secondptr++;
-		uint64_t whole = *firstptr++;
-   
-		whole = (whole << 32) | next;
-   
-		int j;
+    int j;
+    uint32_t p[2] = {input[1], input[0]};
+    uint64_t whole = htole64 (* (uint64_t *) p);
+    input++;
+
 		for (j = 0; j < KEYLEN; j+=2){
 			uint32_t key = (whole << j) >> 32;
 			assert (db_insert(db, key, gpos++));
@@ -91,7 +84,7 @@ int main(int argc, char **argv){
 	uint32_t *buf;
   int more_input;
 
-	assert (db = db_open ("/mnt/genome_database.bin", DB_MODE_WRITE_ONLY));
+	assert (db = db_open ("db.bin", DB_MODE_WRITE_ONLY));
 
 	// Open file 
 	if (argc != 2)
@@ -148,9 +141,9 @@ int main(int argc, char **argv){
 
   assert (db_close (db));
 
-//  assert (db = db_open ("/mnt/db.txt", DB_MODE_READ_ONLY));
+//  assert (db = db_open ("db.bin", DB_MODE_READ_ONLY));
 //	test_index (argv[1]);
-//	assert (db_close (db));
+//  assert (db_close (db));
 
 	return 0;
 }
