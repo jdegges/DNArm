@@ -1,9 +1,9 @@
 bin_PROGRAMS =
 
-if BUILD_CGM
-bin_PROGRAMS += cgm
-cgm_SOURCES = cgm.c memdb.c
-endif
+#if BUILD_CGM
+##bin_PROGRAMS += cgm
+#cgm_SOURCES = cgm.c memdb.c
+#endif
 
 if BUILD_CTB
 bin_PROGRAMS += ctb

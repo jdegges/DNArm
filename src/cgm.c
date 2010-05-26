@@ -332,7 +332,9 @@ int cgm48(uint32_t* read, uint32_t** matches, struct db* database)
   return count;
 }
 
+#if 0
 int main (void)
 {
 	return 0;
 }
+#endif
