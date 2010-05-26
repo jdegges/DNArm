@@ -51,3 +51,10 @@ tcadb_test_SOURCES = db-test.c tcadb.c
 tcadb_test_LDADD = $(TCADB_TEST_LDADD)
 tcadb_test_CFLAGS = $(TCADB_TEST_CFLAGS)
 endif
+
+if BUILD_TCHDB_TEST
+bin_PROGRAMS += tchdb-test
+tchdb_test_SOURCES = db-test.c tchdb.c
+tchdb_test_LDADD = $(TCHDB_TEST_LDADD)
+tchdb_test_CFLAGS = $(TCHDB_TEST_CFLAGS)
+endif
