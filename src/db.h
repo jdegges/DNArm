@@ -6,12 +6,15 @@
 
 struct db;
 
+#define DB_MODE_READ_ONLY   1
+#define DB_MODE_WRITE_ONLY  2
+
 /*
  * Open up a db that can be accessed by parallel threads concurrently.
  * Returns NULL if some error occurred.
  */
 struct db *
-db_open (char *path, const int parallel);
+db_open (char *path, int mode);
 
 /*
  * Close db.
@@ -25,7 +28,7 @@ db_close (struct db *d);
  * Returns true if successfully inserted, false otherwise.
  */
 bool
-db_insert (struct db *d, const uint32_t key, const uint32_t value);
+db_insert (struct db *d, uint32_t key, uint32_t value);
 
 /*
  * Query for all values associated with key.
@@ -33,6 +36,6 @@ db_insert (struct db *d, const uint32_t key, const uint32_t value);
  * number of items. Upon error -1 is returned.
  */
 int32_t
-db_query (struct db *d, const uint32_t key, uint32_t **values);
+db_query (struct db *d, uint32_t key, uint32_t **values);
 
 #endif

@@ -27,7 +27,7 @@ db_open (char *path, const int mode)
     }
 
   db->hdb = tchdbnew ();
-  if (!tchdbtune (db->hdb, 30000000000, 5, 20, HDBTLARGE))
+  if (!tchdbtune (db->hdb, 500000000, 5, 10, HDBTLARGE))
     {
       fprintf (stderr, "tune error\n");
       return false;

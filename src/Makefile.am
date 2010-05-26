@@ -15,7 +15,7 @@ endif
 if BUILD_INDEX
 if BUILD_TCADB_TEST
 bin_PROGRAMS += index
-index_SOURCES = index.c tcadb.c
+index_SOURCES = index.c tchdb.c
 index_LDADD = $(TCADB_TEST_LDADD)
 index_CFLAGS = $(TCADB_TEST_CFLAGS)
 endif
