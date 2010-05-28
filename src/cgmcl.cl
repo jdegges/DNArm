@@ -13,19 +13,24 @@ __kernel void cgm_kernel(__global uint *aList, __global uint *bList,
 	
 	while(i < aLength)
 	{
+		matches[i] = 0;
 		
-		for(int j = 0; j < bLength; j++)
-		{
+		int lower = 0;
+		int upper = bLength-1;
+				
+		while(lower <= upper){
+			int j = (upper + lower)/2;
 			if(bList[j] == aList[i] + keyLength + gap){
 				matches[i] = aList[i] - offset;
 				break;
 			}
-			else if(bList[j] > aList[i] + keyLength + gap){
-				matches[i] = 0;
-				break;
-			}
+			else if(bList[j] > aList[i] + keyLength + gap)
+				upper = j - 1;
+			else
+				lower = j + 1;
+		
 		}
-	
+		
 		i += width*length;
 	}
 }

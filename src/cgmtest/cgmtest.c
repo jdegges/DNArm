@@ -10,7 +10,7 @@
 #include <errno.h>
 
 #include <CL/cl.h>
-#include <omp.h>
+//#include <omp.h>
 
 #define BUF_SIZE 1024
 
@@ -20,7 +20,7 @@
   fprintf (stderr, "\n"); \
 }
 
-int cgm_omp(uint32_t *aList, uint32_t *bList, int aLength, int bLength, int gap, int offset, int keyLength, uint32_t *matches, int threads)
+/*int cgm_omp(uint32_t *aList, uint32_t *bList, int aLength, int bLength, int gap, int offset, int keyLength, uint32_t *matches, int threads)
 {
 	uint32_t* results = NULL;
 	int i = 0;
@@ -60,7 +60,7 @@ int cgm_omp(uint32_t *aList, uint32_t *bList, int aLength, int bLength, int gap,
 		
 	}
 }
-
+*/
 
 
 int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches, int gap, int startOffset)
@@ -106,7 +106,7 @@ int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLe
 
 }
 
-int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyLength, uint32_t** matches, char* clFile, int x, int y)
+double gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyLength, uint32_t** matches, char* clFile, int x, int y)
 {
   int gap = 0, myoffset = 0;
   cl_platform_id *platforms;
@@ -131,6 +131,9 @@ int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyL
 
   cl_int ret;
   cl_uint i;
+
+  struct timeval t1, t2;
+  double elapsedTime;
 
   results = malloc(sizeof(cl_uint)*aLength);
 
@@ -217,7 +220,7 @@ int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyL
     }
 
   /* create buffers on the CL device */
-  a_buf = clCreateBuffer (context, CL_MEM_READ_WRITE,
+  a_buf = clCreateBuffer (context, CL_MEM_READ_ONLY,
                             sizeof (cl_uint) * aLength, NULL, &ret);
   if (NULL == a_buf || CL_SUCCESS != ret)
     {
@@ -225,7 +228,7 @@ int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyL
       exit (EXIT_FAILURE);
     }
 
-  b_buf = clCreateBuffer (context, CL_MEM_READ_WRITE,
+  b_buf = clCreateBuffer (context, CL_MEM_READ_ONLY,
                             sizeof (cl_uint) * bLength, NULL, &ret);
   if (NULL == b_buf || CL_SUCCESS != ret)
     {
@@ -235,7 +238,7 @@ int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyL
 
   int res_bufSize = aLength;
   
-  res_buf = clCreateBuffer (context, CL_MEM_READ_WRITE,
+  res_buf = clCreateBuffer (context, CL_MEM_WRITE_ONLY,
                             sizeof (cl_uint) * res_bufSize, NULL, &ret);
   if (NULL == res_buf || CL_SUCCESS != ret)
     {
@@ -243,13 +246,7 @@ int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyL
       exit (EXIT_FAILURE);
     }
 
-  /* write data to these buffers */
-	clEnqueueWriteBuffer(command_queue, a_buf, CL_FALSE, 
-								0, aLength*sizeof(uint32_t), (void*) aList,
-								0, NULL, NULL);
-	clEnqueueWriteBuffer(command_queue, b_buf, CL_FALSE, 
-								0, bLength*sizeof(uint32_t), (void*) bList,
-								0, NULL, NULL);
+
 
   /* read the opencl program code into a string */
   prgm_fptr = fopen (clFile, "r");
@@ -329,6 +326,16 @@ int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyL
       exit (EXIT_FAILURE);
     }
 
+  	gettimeofday(&t1, NULL);
+
+  /* write data to these buffers */
+	clEnqueueWriteBuffer(command_queue, a_buf, CL_FALSE, 
+								0, aLength*sizeof(uint32_t), (void*) aList,
+								0, NULL, NULL);
+	clEnqueueWriteBuffer(command_queue, b_buf, CL_FALSE, 
+								0, bLength*sizeof(uint32_t), (void*) bList,
+								0, NULL, NULL);
+
   /* set your kernel's arguments */
   ret = clSetKernelArg (kernel, 0, sizeof(cl_mem), &a_buf);
   if (CL_SUCCESS != ret)
@@ -401,6 +408,8 @@ int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyL
       exit (EXIT_FAILURE);
     }
 
+
+
   /* wait for the kernel to finish executing */
   ret = clEnqueueBarrier (command_queue);
   if (CL_SUCCESS != ret)
@@ -409,10 +418,18 @@ int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyL
       exit (EXIT_FAILURE);
     }
 
+
+
   /* copy the contents of dev_buf from the CL device to the host (CPU) */
   ret = clEnqueueReadBuffer (command_queue, res_buf, true, 0,
                              sizeof (cl_uint) * aLength, results, 0, NULL,
                              NULL);
+
+
+  	gettimeofday(&t2, NULL);
+	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+	elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+
   if (CL_SUCCESS != ret)
     {
       print_error ("Failed to copy data from device to host: %d", ret);
@@ -480,6 +497,7 @@ int gpu_cgm(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int keyL
     }
 
 	matches = &results;
+	return elapsedTime;
 }
 
 int uint32_t_cmp(const void *a, const void *b)
@@ -548,24 +566,14 @@ int main(int argc, char* argv[])
 		printf("Sequential: %f\n", elapsedTime);
 		
 		
-		gettimeofday(&t1, NULL);
-		
-		gpu_cgm(aList, bList, listSize, listSize, keySize, &matches2, "cgmcl.cl", cpus, 1);
-		
-		gettimeofday(&t2, NULL);
-		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
-		elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+		elapsedTime = gpu_cgm(aList, bList, listSize, listSize, keySize, &matches2, "cgmcl.cl", cpus, 1);
+	
 		binSearch += elapsedTime;
 		printf("Binary Search: %f\n", elapsedTime);
 				
 
-		gettimeofday(&t1, NULL);
+		elapsedTime = gpu_cgm(aList, bList, listSize, listSize, keySize, &matches, "cgmcl2.cl", listSize, listSize);
 
-		gpu_cgm(aList, bList, listSize, listSize, keySize, &matches, "cgmcl2.cl", listSize, listSize);
-
-		gettimeofday(&t2, NULL);
-		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
-		elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
 		parallel += elapsedTime;
 		printf("Simple Parallel %f\n", elapsedTime);
 		
