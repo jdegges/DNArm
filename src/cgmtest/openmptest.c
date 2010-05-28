@@ -136,7 +136,7 @@ int main(int argc, char* argv[])
 	}
 	
 	omp_set_num_threads(cpus);
-	sleep(10);
+	
 	struct timeval t1, t2;
     double elapsedTime;
 	double openmp = 0, seq = 0;
