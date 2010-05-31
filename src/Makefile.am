@@ -12,6 +12,11 @@ ctb_LDADD = $(CTB_LDADD)
 ctb_CFLAGS = $(CTB_CFLAGS)
 endif
 
+if BUILD_GENOME_GEOMETRY
+bin_PROGRAMS += genome-geometry
+genome_geometry_SOURCES = genome-geometry.c cvdb.c
+endif
+
 if BUILD_INDEX
 if BUILD_TCADB_TEST
 bin_PROGRAMS += index

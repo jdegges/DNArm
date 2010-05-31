@@ -60,6 +60,14 @@ AC_SUBST([CTB_LDADD], ["${PTHREAD_LIBS} ${LOOMLIB_LIBS}"])
 AC_SUBST([CTB_CFLAGS], ["${PTHREAD_CFLAGS} ${LOOMLIB_CFLAGS}"])
 AM_CONDITIONAL([BUILD_CTB], [test x$BUILD_CTB = xyes])
 
+# genome-geometry
+BUILD_GENOME_GEOMETRY=yes
+AC_ARG_WITH([genome-geometry],
+  AC_HELP_STRING([--without-genome-geometry], [Do not build genome-geometry.]),
+  [BUILD_GENOME_GEOMETRY=no])
+AC_SUBST([BUILD_GENOME_GEOMETRY], [${BUILD_GENOME_GEOMETRY}])
+AM_CONDITIONAL([BUILD_GENOME_GEOMETRY], [test x$BUILD_GENOME_GEOMETRY = xyes])
+
 # index
 #
 BUILD_INDEX=yes
@@ -150,15 +158,16 @@ AC_CONFIG_FILES([Makefile
 AC_OUTPUT
 
 echo
-echo "DNArm build summary"
-echo "==================="
-echo "cgm           : $BUILD_CGM"
-echo "ctb           : $BUILD_CTB"
-echo "index         : $BUILD_INDEX"
-echo "memdb-test    : $BUILD_MEMDB_TEST"
-echo "pindex        : $BUILD_PINDEX"
-echo "readgen       : $BUILD_READGEN"
-echo "samplecl      : $BUILD_SAMPLECL"
-echo "tcadb-test    : $BUILD_TCADB_TEST"
-echo "tchdb-test    : $BUILD_TCHDB_TEST"
+echo " DNArm build summary "
+echo "====================="
+echo "cgm             : $BUILD_CGM"
+echo "ctb             : $BUILD_CTB"
+echo "genome-geometry : $BUILD_GENOME_GEOMETRY"
+echo "index           : $BUILD_INDEX"
+echo "memdb-test      : $BUILD_MEMDB_TEST"
+echo "pindex          : $BUILD_PINDEX"
+echo "readgen         : $BUILD_READGEN"
+echo "samplecl        : $BUILD_SAMPLECL"
+echo "tcadb-test      : $BUILD_TCADB_TEST"
+echo "tchdb-test      : $BUILD_TCHDB_TEST"
 echo
