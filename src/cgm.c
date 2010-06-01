@@ -1,7 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include</usr/include/stdint.h>
+#include<stdint.h>
 #include<stdbool.h>
 #include "db.h"
 
@@ -89,16 +89,31 @@ int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLengt
 
 }
 
-int cgm(int a, int b, int c, int d, uint32_t** matches, struct db* database)
+int cgm(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t** matches, struct db* database)
 {
-	int sections, secLength, aLength, bLength, cLength, dLength
+	int sections, secLength, aLength, bLength, cLength, dLength;
 	int double1, double2, double3, double4, double5, double6;
 	int quad, triple1, triple2, triple3, triple4;
-	int itempA, itempB, itempC;
+	int itempA, itempB;
 	int count;
-	uint32_t* dubMatches1, dubMatches2, dubMatches3, dubMatches4, dubMatches5, dubMatches6;
-	uint32_t* quadMatches, tripMatches1, tripMatches2, tripMatches3, tripMatches4;
-	uint32_t* tempA, tempB, tempC;
+	
+	uint32_t* dubMatches1 = NULL;
+	uint32_t* dubMatches2 = NULL;
+	uint32_t* dubMatches3 = NULL;
+	uint32_t* dubMatches4 = NULL;
+	uint32_t* dubMatches5 = NULL;
+	uint32_t* dubMatches6 = NULL;
+	
+	uint32_t* tripMatches1 = NULL;
+	uint32_t* tripMatches2 = NULL;
+	uint32_t* tripMatches3 = NULL;
+	uint32_t* tripMatches4 = NULL;
+
+	uint32_t* quadMatches = NULL;
+
+	uint32_t* tempA;
+	uint32_t* tempB;
+	uint32_t* tempC;
 
 	int keySize = 16;
 
@@ -107,10 +122,10 @@ int cgm(int a, int b, int c, int d, uint32_t** matches, struct db* database)
 	uint32_t* cList = NULL;
 	uint32_t* dList = NULL;
 
-	aLength = db_query(database, a, aList);
-	bLength = db_query(database, b, bList);
-	cLength = db_query(database, c, cList);
-	dLength = db_query(database, d, dList);
+	aLength = db_query(database, a, &aList);
+	bLength = db_query(database, b, &bList);
+	cLength = db_query(database, c, &cList);
+	dLength = db_query(database, d, &dList);
 
 	omp_set_num_threads(8);
 	
@@ -206,82 +221,3 @@ int cgm(int a, int b, int c, int d, uint32_t** matches, struct db* database)
 	return count;
 }
 
-
-int main(int argc, char* argv[])
-{
-	if(argc != 6){
-		printf("USAGE: cgmtest MAXVALUE KEYSIZE LISTSIZE REPS MAXCOMPUTEUNITS\nNote: list size should be less than  the min of max work items[0] and max work items[1]\n");
-		exit(-1);
-	}
-
-	uint32_t* aList = NULL;
-	uint32_t* bList = NULL;
-	uint32_t* matches = NULL;
-	uint32_t* matches2 = NULL;
-	
-	int maxValue = atoi(argv[1]);
-	int keySize = atoi(argv[2]);
-	int listSize = atoi(argv[3]);
-	int reps = atoi(argv[4]);
-	int cpus = atoi(argv[5]);
-
-	aList = (uint32_t*) malloc(sizeof(uint32_t)*listSize);
-	bList = (uint32_t*) malloc(sizeof(uint32_t)*listSize);
-
-	if(aList == NULL || bList == NULL){
-		printf("Error allocating memory\n");
-		exit(-1);
-	}
-
-	struct timeval t1, t2;
-    double elapsedTime;
-	double seq = 0, binSearch = 0, parallel = 0;
-
-	srand( (unsigned)time(NULL));
-
-	int i, j;
-
-	for(i = 0; i < reps; i++)
-	{
-		printf("*****Trial %d*****\nGenerating lists...", i);
-		for(j = 0; j < listSize; j++)
-			aList[j] = rand() % maxValue;
-
-		for(j = 0; j < listSize; j++)
-			bList[j] = rand() % maxValue;
-		printf("Done.\nSorting...");
-		qsort(aList, listSize, sizeof(uint32_t), uint32_t_cmp);
-		qsort(bList, listSize, sizeof(uint32_t), uint32_t_cmp);
-		
-		printf("Done.\nExecuting...\n");
-		gettimeofday(&t1, NULL);
-
-		doubleMatchAid(aList, bList, listSize, listSize, keySize, &matches, 0, 0);
-
-		gettimeofday(&t2, NULL);
-		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
-		elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
-		seq += elapsedTime;
-		printf("Sequential: %f\n", elapsedTime);
-		
-		
-		elapsedTime = gpu_cgm(aList, bList, listSize, listSize, keySize, &matches2, "cgmcl.cl", cpus, 1);
-	
-		binSearch += elapsedTime;
-		printf("Binary Search: %f\n", elapsedTime);
-				
-
-		elapsedTime = gpu_cgm(aList, bList, listSize, listSize, keySize, &matches, "cgmcl2.cl", listSize, listSize);
-
-		parallel += elapsedTime;
-		printf("Simple Parallel %f\n", elapsedTime);
-		
-	}
-
-	printf("\n*****Results*****:\n");
-	printf("Sequential: %f\n", seq/reps);
-	printf("Binary Search: %f\n", binSearch/reps);
-	printf("Simple Parallel: %f\n", parallel/reps);
-	
-
-}
