@@ -6,21 +6,6 @@
 #include "db.h"
 
 
-int editValues(uint32_t* list, uint32_t length, int offset)
-{
-	int i, j = 0;
-	
-	/* adjust values to position where read would start */
-	for(i = 0; i < length; i++){
-		if(list[i] > offset){
-			list[j] = list[i] - offset;
-			j++;
-		}
-	}
-
-	return j;
-}
-
 int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, uint32_t** result)
 {
 	int i = 0, j = 0, k = 0, count = 0;
@@ -60,7 +45,7 @@ int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, 
 }
 
 
-int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches, int gap, int startOffset)
+int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches, int gap, int startOffset)
 {
 	int i = 0, j= 0, mLength = 0;
 	uint32_t* dubs = NULL;
@@ -99,207 +84,204 @@ int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLe
 	}
 
 	free(dubs);
+	*matches = NULL;
 	return 0;
 
 }
 
-int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches)
+int cgm(int a, int b, int c, int d, uint32_t** matches, struct db* database)
 {
-	uint32_t* sing = NULL;
-	uint32_t* c = NULL;
-	int sLength, cLength = 0;
+	int sections, secLength, aLength, bLength, cLength, dLength
+	int double1, double2, double3, double4, double5, double6;
+	int quad, triple1, triple2, triple3, triple4;
+	int itempA, itempB, itempC;
+	int count;
+	uint32_t* dubMatches1, dubMatches2, dubMatches3, dubMatches4, dubMatches5, dubMatches6;
+	uint32_t* quadMatches, tripMatches1, tripMatches2, tripMatches3, tripMatches4;
+	uint32_t* tempA, tempB, tempC;
 
-	int dLength = doubleMatchAid(a, b, aLength, bLength, secLength, matches, 0, 0);
+	int keySize = 16;
 
-	if(dLength > 0)
-		return dLength;
-
-	bLength = editValues(b, bLength, secLength);
-	sLength = mergeLists(a, b, c, aLength, bLength, cLength, &sing);
-
-	matches = &sing;
-	return sLength;
-
-}
-
-
-int tripleMatch(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, int secLength, uint32_t** matches)
-{
-	int i = 0, j = 0, k = 0, mLength = 0, d12Length = 0, d23Length = 0, d13Length = 0, dLength, sLength;
-	uint32_t* trips = NULL;
-	uint32_t* dub12 = NULL;
-	uint32_t* dub23 = NULL;
-	uint32_t* dub13 = NULL;
-	uint32_t* dubs = NULL;
-	uint32_t* sing = NULL;
-
-	/* maximum length is length of smallest list */
-	int mMax = aLength;
-	int dMax = aLength;
-
-	if(bLength < mMax){
-		mMax = bLength;
-		dMax = bLength;
-	}
-	if(cLength < mMax)
-		mMax = cLength;
-
-	trips = (uint32_t*) malloc(sizeof(uint32_t)*mMax);
-	dub12 = (uint32_t*) malloc(sizeof(uint32_t)*dMax);
-	if(trips == NULL || dub12 == NULL){
-		printf("Unable to allocate memory!\n");
-		exit(-1);
-	}
-
-	/* loop through the lists to find triple matches and double matches between 1st and 2nd list */
-	while(i < aLength && j < bLength && k < cLength){
-		int temp = mLength;
-
-		while(j < bLength && k < cLength){
-			if(b[j] < a[i] + secLength)
-				j++;
-			else if(b[j] > a[i] + secLength)
-				break;
-			else{
-				dub12[d12Length] = a[i];
-				d12Length++;
-
-				while(k < cLength){
-					if(c[k] < b[j] + secLength)
-						k++;
-					else if(c[k] > b[j] + secLength)
-						break;
-					else if(c[k] == b[j] + secLength){
-						trips[mLength] = a[i];
-						mLength++;
-						break;
-					}
-				}
-				
-				j++;
-				if(mLength > temp)
-					break;
-				
-			}
-		}
-		
-		i++;
-
-	}
-	
-	/* if triple matches were found return them, and free the double matches */
-	if(mLength > 0){
-		free(dub12);
-		*matches = trips;
-		return mLength;
-	}
-
-	/* otherwise free the triple matches memory, find remaining double matches, and merge results */
-	free(trips);
-
-	d23Length = doubleMatchAid(b, c, bLength, cLength, secLength, &dub23, 0, secLength);
-	d13Length = doubleMatchAid(a, c, aLength, cLength, secLength, &dub13, secLength, 0);
-
-	if(d12Length != 0 && d13Length != 0 && d23Length != 0)
-	{
-		dLength = mergeLists(dub12, dub23, dub13, d12Length, d23Length, d13Length, &dubs);
-		
-		if(dub12 != NULL)
-			free(dub12);
-		if(dub23 != NULL)
-			free(dub23);
-		if(dub13 != NULL)
-			free(dub13);
-		
-		*matches = dubs;
-		return dLength;
-	}
-
-	/* if still no matches, combine the input lists and return them as results */
-	bLength = editValues(b, bLength, secLength);
-	cLength = editValues(c, cLength, 2*secLength);
-	sLength = mergeLists(a, b, c, aLength, bLength, cLength, &sing);
-
-	*matches = sing;
-	return sLength;
-
-
-}
-
-
-int cgm(char* read, int readLength, int keySize, uint32_t** matches, struct db* database)
-{
-	int sections, secLength, aLength, bLength, cLength, count;
-	char* a;
-	char* b;
-	char* c;
 	uint32_t* aList = NULL;
 	uint32_t* bList = NULL;
 	uint32_t* cList = NULL;
+	uint32_t* dList = NULL;
 
-	/* determine the number of sections (0-3) and allocate memory for each key */
-	if(readLength < keySize)
-		return 0;
-	if(readLength >= keySize){
-		sections = 1;
-		a = (char*) malloc(sizeof(char)*keySize/4);
-	}
-	if(readLength/keySize >= 2){
-		sections = 2;
-		b = (char*) malloc(sizeof(char)*keySize/4);
-	}
-	if(readLength/keySize >= 3){
-		sections = 3;
-		c = (char*) malloc(sizeof(char)*keySize/4);
-	}
-
-	if(a == NULL || sections >= 2 && b == NULL || sections >= 3 && c == NULL){
-		printf("Unable to allocate memory!\n");
-		exit(-1);
-	}
-
-	/* copy the reads into the key strings and query database */
-	strncpy(a, read, keySize/4);
 	aLength = db_query(database, a, aList);
-	
-	if(sections >= 2){
-		strncpy(b, &read[keySize/4], keySize/4);
-		bLength = db_query(database, b, bList);
-	}
-	
-	if(sections == 3){
-		strncpy(c, &read[keySize/2], keySize/4);
-		cLength = db_query(database, c, cList);
+	bLength = db_query(database, b, bList);
+	cLength = db_query(database, c, cList);
+	dLength = db_query(database, d, dList);
 
-		/* if 3 sections attempt to find a triple match */
-		count = tripleMatch(aList, bList, cList, aLength, bLength, cLength, keySize, matches);
+	omp_set_num_threads(8);
+	
+	#pragma omp parallel sections
+	{
+		double1 = doubleMatch(aList, bList, aLength, bLength, keySize, &dubMatches1, 0, 0);
+		#pragma omp section
+		double2 = doubleMatch(aList, cList, aLength, cLength, keySize, &dubMatches2, keySize, 0);
+		#pragma omp section
+		double3 = doubleMatch(aList, dList, aLength, dLength, keySize, &dubMatches3, keySize*2, 0);
+		#pragma omp section
+		double4 = doubleMatch(bList, cList, bLength, cLength, keySize, &dubMatches4, 0, keySize);
+		#pragma omp section
+		double5 = doubleMatch(bList, dList, bLength, dLength, keySize, &dubMatches5, keySize, keySize);
+		#pragma omp section
+		double6 = doubleMatch(cList, dList, cLength, dLength, keySize, &dubMatches6, 0, keySize*2);
+	}
 
-		free(aList);
-		free(bList);
-		free(cList);
+	#pragma omp parallel sections
+	{
+		quad = doubleMatch(dubMatches1, dubMatches6, double1, double2, 0, &quadMatches, 0, 0);
+		#pragma omp section
+		triple1 = doubleMatch(dubMatches1, dubMatches2, double1, double2, 0, &tripMatches1, 0, 0);
+		#pragma omp section
+		triple2 = doubleMatch(dubMatches1, dubMatches3, double1, double2, 0, &tripMatches2, 0, 0);
+		#pragma omp section
+		triple3 = doubleMatch(dubMatches2, dubMatches3, double1, double2, 0, &tripMatches3, 0, 0);
+		#pragma omp section
+		triple4 = doubleMatch(dubMatches4, dubMatches5, double1, double2, 0, &tripMatches4, 0, 0);
 	}
-	else if(sections == 2){
-		/* if there are 2 sections attempt to find a double match */
-		count = doubleMatch(aList, bList, aLength, bLength, keySize, matches);
-		free(aList);
-		free(bList);
+
+	if(quad > 0){
+		*matches = quadMatches;
+		count = quad;
 	}
-	else{
-		/* if there's only 1 section, can't narrow results */
-		matches = &aList;
-		count = aLength;
+	else if(triple1 + triple2 + triple3 + triple4 > 0)
+	{
+		#pragma omp parallel sections
+		{
+			itempA = mergeLists(tripMatches1, tripMatches2, NULL, triple1, triple2, 0, &tempA);
+			#pragma omp section
+			itempB = mergeLists(tripMatches3, tripMatches4, NULL, triple3, triple4, 0, &tempB);
+		}
+		
+		count = mergeLists(tempA, tempB, NULL, itempA, itempB, 0, &tempC);
+		*matches = tempC;
+		
+		free(tempA);
+		free(tempB);
+	}
+	else if(double1 + double2 + double3 + double4 + double5 + double6 > 0)
+	{
+		#pragma omp parallel sections
+		{
+			itempA = mergeLists(dubMatches1, dubMatches2, dubMatches3, double1, double2, double3, &tempA);
+			#pragma omp section
+			itempB = mergeLists(dubMatches4, dubMatches5, dubMatches6, double4, double5, double6, &tempB);
+		}
+		
+		count = mergeLists(tempA, tempB, NULL, itempA, itempB, 0, &tempC);
+		*matches = tempC;
+
+		free(tempA);
+		free(tempB);
+
+	}
+	else
+	{
+		#pragma omp parallel sections
+		{
+			itempA = mergeLists(aList, bList, NULL, aLength, bLength, 0, &tempA);
+			#pragma omp section
+			itempB = mergeLists(cList, dList, NULL, cLength, dLength, 0, &tempB);
+		}
+		
+		count = mergeLists(tempA, tempB, NULL, itempA, itempB, 0, &tempC);
+		*matches = tempC;
+
+		free(tempA);
+		free(tempB);
 	}
 
 	/* free any allocated memory and return the number items in matches */
-	free(a);
-	if(sections >= 2){
-		free(b);
-		if(sections == 3){
-			free(c);
-		}
-	}
+	if(aList != NULL)
+		free(aList);
+	if(bList != NULL)
+		free(bList);
+	if(cList != NULL)
+		free(cList);
+	if(dList != NULL)
+		free(dList);
 
 	return count;
 }
 
 
+int main(int argc, char* argv[])
+{
+	if(argc != 6){
+		printf("USAGE: cgmtest MAXVALUE KEYSIZE LISTSIZE REPS MAXCOMPUTEUNITS\nNote: list size should be less than  the min of max work items[0] and max work items[1]\n");
+		exit(-1);
+	}
+
+	uint32_t* aList = NULL;
+	uint32_t* bList = NULL;
+	uint32_t* matches = NULL;
+	uint32_t* matches2 = NULL;
+	
+	int maxValue = atoi(argv[1]);
+	int keySize = atoi(argv[2]);
+	int listSize = atoi(argv[3]);
+	int reps = atoi(argv[4]);
+	int cpus = atoi(argv[5]);
+
+	aList = (uint32_t*) malloc(sizeof(uint32_t)*listSize);
+	bList = (uint32_t*) malloc(sizeof(uint32_t)*listSize);
+
+	if(aList == NULL || bList == NULL){
+		printf("Error allocating memory\n");
+		exit(-1);
+	}
+
+	struct timeval t1, t2;
+    double elapsedTime;
+	double seq = 0, binSearch = 0, parallel = 0;
+
+	srand( (unsigned)time(NULL));
+
+	int i, j;
+
+	for(i = 0; i < reps; i++)
+	{
+		printf("*****Trial %d*****\nGenerating lists...", i);
+		for(j = 0; j < listSize; j++)
+			aList[j] = rand() % maxValue;
+
+		for(j = 0; j < listSize; j++)
+			bList[j] = rand() % maxValue;
+		printf("Done.\nSorting...");
+		qsort(aList, listSize, sizeof(uint32_t), uint32_t_cmp);
+		qsort(bList, listSize, sizeof(uint32_t), uint32_t_cmp);
+		
+		printf("Done.\nExecuting...\n");
+		gettimeofday(&t1, NULL);
+
+		doubleMatchAid(aList, bList, listSize, listSize, keySize, &matches, 0, 0);
+
+		gettimeofday(&t2, NULL);
+		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+		elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+		seq += elapsedTime;
+		printf("Sequential: %f\n", elapsedTime);
+		
+		
+		elapsedTime = gpu_cgm(aList, bList, listSize, listSize, keySize, &matches2, "cgmcl.cl", cpus, 1);
+	
+		binSearch += elapsedTime;
+		printf("Binary Search: %f\n", elapsedTime);
+				
+
+		elapsedTime = gpu_cgm(aList, bList, listSize, listSize, keySize, &matches, "cgmcl2.cl", listSize, listSize);
+
+		parallel += elapsedTime;
+		printf("Simple Parallel %f\n", elapsedTime);
+		
+	}
+
+	printf("\n*****Results*****:\n");
+	printf("Sequential: %f\n", seq/reps);
+	printf("Binary Search: %f\n", binSearch/reps);
+	printf("Simple Parallel: %f\n", parallel/reps);
+	
+
+}
