@@ -60,6 +60,8 @@ struct cldb
   /* cache storage */
   uint64_t *l1;       /* 2KB */
   uint32_t *l2;       /* 128MB */
+  uint32_t *l2_switch;
+  uint32_t *data_2;	
   uint32_t *data;     /* CACHE_BYTES bytes */
   uint32_t l1_index;  /* currently cached L2 block */
 
@@ -68,7 +70,7 @@ struct cldb
 };
 
 pthread_mutex_t cache_lock;
-pthread cond_t cache_switch;
+pthread_cond_t cache_switch;
 int num_threads;
 int num_wait=0;
 
@@ -152,11 +154,24 @@ cldb_alloc (void)
       print_error ("Out of memory");
       goto error;
     }
+  if (NULL == (db->l2_switch = calloc (1, L2_BYTES)))
+    {
+      print_error ("Out of memory");
+      goto error;
+    }
+
+  if (NULL == (db->data2 = calloc (1, DATA_BYTES)))
+    {
+      print_error ("Out of memory");
+      goto error;
+    }
 
   return db;
 
 error:
   free (db->data);
+  free (db->data2);
+  free (db->l2_switch);
   free (db->l2);
   free (db->l1);
   free (db);
@@ -173,6 +188,10 @@ cldb_free (struct cldb *db)
     free (db->data);
   if (NULL != db->l2)
     free (db->l2);
+  if (NULL != db->data2)
+    free (db->data2);
+  if (NULL != db->l2_switch)
+    free (db->l2_switch);
   if (NULL != db->l1)
     free (db->l1);
   free (db);
@@ -392,7 +411,7 @@ exit:
 struct cldb *
 cldb_open (char *path, int threads)
 {
-  pthread_cond_int(&cache_switch, NULL);
+  pthread_cond_init(&cache_switch, NULL);
   pthread_mutex_init(&cache_lock, NULL);
   num_threads = threads;
   struct cldb *db;
@@ -466,6 +485,8 @@ cldb_close (struct cldb *db)
 }
 
 void cldb_wait(struct cldb *db, uint32_t key){
+  uint32_t l1_index = key >> 24;        /* upper 8 bits */
+  uint32_t l2_index = key & 0x00FFFFFF; /* lower 24 bits */
   pthread_mutex_lock(&cache_lock);
   if(num_wait<num_threads-1){
     num_wait++;
@@ -487,6 +508,9 @@ void cldb_wait(struct cldb *db, uint32_t key){
       pthread_cond_broadcast(&cache_switch);
       num_wait=0;
       pthread_mutex_unlock(&cache_lock);
+
+	/* ADD LOADING ADJACENT BACKUP HERE */
+
   }
   
   
@@ -507,7 +531,7 @@ cldb_get (struct cldb *db, uint32_t key, uint32_t **values)
   /* if the requested key is in the currently loaded cache block */
   if(db->l1_index != l1_index)
   {
-    cldb_wait();   
+    cldb_wait(db, key);   
   }
   if (db->l1_index == l1_index)
     {
