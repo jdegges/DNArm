@@ -17,6 +17,11 @@ bin_PROGRAMS += genome-geometry
 genome_geometry_SOURCES = genome-geometry.c cvdb.c
 endif
 
+if BUILD_GENOME_INDEX
+bin_PROGRAMS += genome-index
+genome_index_SOURCES = genome-index.c cvdb.c cldb.c
+endif
+
 if BUILD_INDEX
 if BUILD_TCADB_TEST
 bin_PROGRAMS += index

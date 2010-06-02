@@ -68,6 +68,14 @@ AC_ARG_WITH([genome-geometry],
 AC_SUBST([BUILD_GENOME_GEOMETRY], [${BUILD_GENOME_GEOMETRY}])
 AM_CONDITIONAL([BUILD_GENOME_GEOMETRY], [test x$BUILD_GENOME_GEOMETRY = xyes])
 
+# genome-index
+BUILD_GENOME_INDEX=yes
+AC_ARG_WITH([genome-index],
+  AC_HELP_STRING([--without-genome-index], [Do not build genome-index.]),
+  [BUILD_GENOME_INDEX=no])
+AC_SUBST([BUILD_GENOME_INDEX], [${BUILD_GENOME_INDEX}])
+AM_CONDITIONAL([BUILD_GENOME_INDEX], [test x$BUILD_GENOME_INDEX = xyes])
+
 # index
 #
 BUILD_INDEX=yes
@@ -163,6 +171,7 @@ echo "====================="
 echo "cgm             : $BUILD_CGM"
 echo "ctb             : $BUILD_CTB"
 echo "genome-geometry : $BUILD_GENOME_GEOMETRY"
+echo "genome-index    : $BUILD_GENOME_INDEX"
 echo "index           : $BUILD_INDEX"
 echo "memdb-test      : $BUILD_MEMDB_TEST"
 echo "pindex          : $BUILD_PINDEX"
