@@ -11,7 +11,7 @@ struct cldb;
  * Returns NULL if some error occurred.
  */
 struct cldb *
-cldb_open (char *path);
+cldb_open (char *path, int thread);
 
 /*
  * Close db.
