@@ -61,7 +61,7 @@ struct cldb
   uint64_t *l1;       /* 2KB */
   uint32_t *l2;       /* 128MB */
   uint32_t *l2_switch;
-  uint32_t *data_2;	
+  uint32_t *data2;	
   uint32_t *data;     /* CACHE_BYTES bytes */
   uint32_t l1_index;  /* currently cached L2 block */
 
