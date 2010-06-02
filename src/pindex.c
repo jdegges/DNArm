@@ -42,7 +42,7 @@ static void findkeys(void *t){
    
 		int j;
 		uint64_t temp;
-		for (j = 0; j < KEYLEN; j++){
+		for (j = 0; j < KEYLEN; j+=2){
 			// shift "whole" left by j places, then shift result right 32 places
 			temp = (whole << j) >> 32;
 			uint32_t key = temp;
@@ -172,7 +172,7 @@ int main(int argc, char **argv){
 		}
 		args->data = input;
 		args->d_len = numRead;
-		args->f_pos = 8 * curr_pos;
+		args->f_pos = 4 * curr_pos;
     args->state = state;
 
 		assert (thread_pool_push (pool, findkeys, args));
