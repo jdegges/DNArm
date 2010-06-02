@@ -5,7 +5,6 @@
 #include<stdbool.h>
 #include "db.h"
 
-
 int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, uint32_t** result)
 {
 	int i = 0, j = 0, k = 0, count = 0;
@@ -45,10 +44,16 @@ int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, 
 }
 
 
-int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches, int gap, int startOffset)
+int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, uint32_t secLength, uint32_t** matches, uint32_t gap, uint32_t startOffset)
 {
 	int i = 0, j= 0, mLength = 0;
 	uint32_t* dubs = NULL;
+
+	if(aLength == 0 || bLength == 0)
+	{
+		*matches == NULL;
+		return 0;
+	}
 
 	/* maximum length is length of smaller list */
 	int mMax = aLength;
@@ -85,6 +90,7 @@ int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLengt
 
 	free(dubs);
 	*matches = NULL;
+
 	return 0;
 
 }
@@ -122,12 +128,17 @@ int cgm(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t** matches, stru
 	uint32_t* cList = NULL;
 	uint32_t* dList = NULL;
 
-	aLength = db_query(database, a, &aList);
-	bLength = db_query(database, b, &bList);
-	cLength = db_query(database, c, &cList);
-	dLength = db_query(database, d, &dList);
+	#pragma omp parallel sections
+	{
+		aLength = db_query(database, a, &aList);
+		#pragma omp section
+		bLength = db_query(database, b, &bList);
+		#pragma omp section
+		cLength = db_query(database, c, &cList);
+		#pragma omp section
+		dLength = db_query(database, d, &dList);
+	}
 
-	omp_set_num_threads(8);
 	
 	#pragma omp parallel sections
 	{
@@ -146,15 +157,15 @@ int cgm(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t** matches, stru
 
 	#pragma omp parallel sections
 	{
-		quad = doubleMatch(dubMatches1, dubMatches6, double1, double2, 0, &quadMatches, 0, 0);
+		quad = doubleMatch(dubMatches1, dubMatches6, double1, double6, 0, &quadMatches, 0, 0);
 		#pragma omp section
 		triple1 = doubleMatch(dubMatches1, dubMatches2, double1, double2, 0, &tripMatches1, 0, 0);
 		#pragma omp section
-		triple2 = doubleMatch(dubMatches1, dubMatches3, double1, double2, 0, &tripMatches2, 0, 0);
+		triple2 = doubleMatch(dubMatches1, dubMatches3, double1, double3, 0, &tripMatches2, 0, 0);
 		#pragma omp section
-		triple3 = doubleMatch(dubMatches2, dubMatches3, double1, double2, 0, &tripMatches3, 0, 0);
+		triple3 = doubleMatch(dubMatches2, dubMatches3, double2, double3, 0, &tripMatches3, 0, 0);
 		#pragma omp section
-		triple4 = doubleMatch(dubMatches4, dubMatches5, double1, double2, 0, &tripMatches4, 0, 0);
+		triple4 = doubleMatch(dubMatches4, dubMatches5, double4, double5, 0, &tripMatches4, 0, 0);
 	}
 
 	if(quad > 0){
@@ -175,6 +186,7 @@ int cgm(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t** matches, stru
 		
 		free(tempA);
 		free(tempB);
+
 	}
 	else if(double1 + double2 + double3 + double4 + double5 + double6 > 0)
 	{
@@ -209,14 +221,22 @@ int cgm(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t** matches, stru
 	}
 
 	/* free any allocated memory and return the number items in matches */
-	if(aList != NULL)
 		free(aList);
-	if(bList != NULL)
 		free(bList);
-	if(cList != NULL)
 		free(cList);
-	if(dList != NULL)
 		free(dList);
+		free(tripMatches1);
+		free(tripMatches2);
+		free(tripMatches3);
+		free(tripMatches4);
+		free(dubMatches1);
+		free(dubMatches2);
+		free(dubMatches3);
+		free(dubMatches4);
+		free(dubMatches5);
+		free(dubMatches6);
+	if(quad == 0)
+		free(quadMatches);
 
 	return count;
 }
