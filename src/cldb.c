@@ -10,7 +10,7 @@
 
 #include <cvdb.h>
 #include <cldb.h>
-
+#include <pthread.h>
 /* File structures:
  * L1 block:
  *     <---- 2**8 = 256 items --->
@@ -66,6 +66,14 @@ struct cldb
   /* file stream info */
   FILE *fp;
 };
+
+pthread_mutex_t cache_lock;
+pthread cond_t cache_switch;
+int num_threads;
+int num_wait=0;
+
+
+
 
 #define print_error(msg){ \
   fprintf (stderr, "[%s:%d in %s] ", __FILE__, __LINE__, __func__); \
@@ -382,8 +390,11 @@ exit:
 }
 
 struct cldb *
-cldb_open (char *path)
+cldb_open (char *path, int threads)
 {
+  pthread_cond_int(&cache_switch, NULL);
+  pthread_mutex_init(&cache_lock, NULL);
+  num_threads = threads;
   struct cldb *db;
   struct stat st;
 
@@ -454,6 +465,33 @@ cldb_close (struct cldb *db)
   return retval;
 }
 
+void cldb_wait(struct cldb *db, uint32_t key){
+  pthread_mutex_lock(&cache_lock);
+  if(num_wait<num_threads-1){
+    num_wait++;
+    pthread_cond_wait(&cache_switch, &cache_lock);
+    pthread_mutex_unlock(&cache_lock);
+  }
+  else {
+    
+      /* read in the L2 index segment */
+      xfseekread (db->l2, 1, L2_BYTES,
+                  L2_OFFSET + db->l1[0+l1_index*2], SEEK_SET, db->fp);
+
+      /* read in the L2 data segment */
+      xfseekread (db->data, 1, db->l1[1+l1_index*2],
+                  L2_OFFSET + db->l1[0+l1_index*2] + L2_BYTES, SEEK_SET,
+                  db->fp);
+      db->l1_index = l1_index;
+      
+      pthread_cond_broadcast(&cache_switch);
+      num_wait=0;
+      pthread_mutex_unlock(&cache_lock);
+  }
+  
+  
+
+}
 int32_t
 cldb_get (struct cldb *db, uint32_t key, uint32_t **values)
 {
@@ -467,6 +505,10 @@ cldb_get (struct cldb *db, uint32_t key, uint32_t **values)
     }
 
   /* if the requested key is in the currently loaded cache block */
+  if(db->l1_index != l1_index)
+  {
+    cldb_wait();   
+  }
   if (db->l1_index == l1_index)
     {
       *values = &db->data[db->l2[0+l2_index*2]];
@@ -475,17 +517,6 @@ cldb_get (struct cldb *db, uint32_t key, uint32_t **values)
   /* load appropriate L2 cache block */
   else
     {
-      /* read in the L2 index segment */
-      xfseekread (db->l2, 1, L2_BYTES,
-                  L2_OFFSET + db->l1[0+l1_index*2], SEEK_SET, db->fp);
-
-      /* read in the L2 data segment */
-      xfseekread (db->data, 1, db->l1[1+l1_index*2],
-                  L2_OFFSET + db->l1[0+l1_index*2] + L2_BYTES, SEEK_SET,
-                  db->fp);
-      db->l1_index = l1_index;
-
-      *values = &db->data[db->l2[0+l2_index*2]];
-      return db->l2[1+l2_index*2];
+      print_error("Cache error that shouldn't have occured");
     }
 }
