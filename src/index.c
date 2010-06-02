@@ -1,92 +1,149 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <assert.h>
+#include <endian.h>
 
 #define BUFLEN 1024
 #define INPUTLEN 1024
 #define KEYLEN 32
 
+#include <db.h>
+
+static struct db *db;
+
 int gpos = 0;
 
-uint32_t findkeys(uint32_t *input, int inlen){
+void findkeys(uint32_t *input, int inlen){
+  while (--inlen) {
+    int j;
+    uint32_t p[2] = {input[1], input[0]};
+    uint64_t whole = htole64 (* (uint64_t *) p);
+    input++;
 
-    int i;
-    uint32_t *firstptr = input;
-    uint32_t *secondptr = input + 1;
-
-    for (i = 0; i < inlen - 1; i++){
-        uint32_t next = *secondptr++;
-        uint64_t whole = *firstptr++;
-   
-        whole = (whole << 32) | next;
-        //printf("i:%d  num:%llu\n", i, whole);
-   
-        int j;
-        uint64_t temp;
-        for (j = 0; j < KEYLEN; j++){
-	    // shift "whole" left by j places, then shift result right 32 places
-	    temp = (whole << j) >> 32;
-	    uint32_t key = temp;
-	    //printf("key:%llu\n", key);
-	    //INSERT INTO DB
-      	    //db_insert(struct db *d, key, gpos);
-	    //printf("key: %llu, pos  %d\n", key, gpos);
-	    gpos++;
-        }
-    }
-    // Return last element to add as first element of the next iteration
-    return input[inlen];
-
+		for (j = 0; j < KEYLEN; j+=2){
+			uint32_t key = (whole << j) >> 32;
+			assert (db_insert(db, key, gpos++));
+		}
+	}
 }
 
+static void test_index(const char *path)
+{
+  FILE *fp = fopen (path, "rb");
+  uint32_t *input;
+
+  for (;;) {
+    int i;
+    input = malloc ((sizeof *input) * INPUTLEN);
+    if (NULL == input)
+    {
+      printf ("Out of memory\n");
+      exit (EXIT_FAILURE);
+    }
+
+    int curr_pos = ftell (fp);
+    int numRead = fread (input, sizeof *input, INPUTLEN, fp);
+    if (0 == numRead)
+      break;
+
+    for (i = 0; i < numRead; i++)
+    {
+      int j;
+      uint32_t pos = curr_pos*4 + i*16;
+      uint32_t *values = NULL;
+      int32_t count = db_query (db, input[i], &values);
+
+      if (count <= 0)
+      {
+        printf ("Error querying. Got %d hits for key=%u\n", count, input[i]);
+        exit (EXIT_FAILURE);
+      }
+
+      for (j = 0; j < count; j++)
+      {
+        if (pos == values[j])
+          break;
+      }
+      if (count <= j)
+      {
+        printf ("didnt find (k,v) = (%u,%u)\n", input[i], pos);
+      }
+
+      free (values);
+    }
+    free (input);
+  }
+  free (input);
+  
+  fclose (fp);
+}
 
 int main(int argc, char **argv){
-    // Open file 
-    FILE *fp = fopen(argv[1], "rb");
-    if (NULL == fp)
-    {
-	printf("File open error!\n");
-	return -1;
-    }
+	uint32_t last;
+	uint32_t *buf;
+  int more_input;
 
-    // allocate space to hold input from file
-    uint32_t *input = (uint32_t*) malloc(INPUTLEN*sizeof(uint32_t));
+	assert (db = db_open ("db.bin", DB_MODE_WRITE_ONLY));
 
-    // store last int of each iteration
-    uint32_t stored;
-    int first = 1, numRead;
-
-    for(;;){	
-
-	// Decrement pointer to point at first element of array
-	if (first){
-	    numRead = fread(input, sizeof(uint32_t), INPUTLEN, fp);
-	}else{
-	    numRead = fread(input, sizeof(uint32_t), INPUTLEN-1, fp);    
-	    input--;
+	// Open file 
+	if (argc != 2)
+	{
+		printf ("Not enough arguments.\n");
 	}
 
-	// printf("NUMREAD = %d\n", numRead);
-
-	if (numRead == 0){
-	    //if (!first)
-	    //db_insert(stored, gpos)
-	    break;
-	}else if (numRead <= INPUTLEN - 1){
-	    if (first)
-		stored = findkeys(input, numRead);
- 	    else
-	        stored = findkeys(input, numRead+1);
-	    // db_insert(stored, gpos)
-	    break;
-        }else{
-	    stored = findkeys(input, INPUTLEN);
-	    input[0] = stored;
-	    input++; /* increment pointer */
+	FILE *fp = fopen(argv[1], "rb");
+	if (NULL == fp)
+	{
+		printf("File open error!\n");
+		return -1;
 	}
-	
-	if (first) first = 0; /* switch flag */
 
-    }
+	// allocate space to hold input from file
+	if (sizeof last != fread (&last, 1, sizeof last, fp))
+	{
+		printf ("couldnt read first 32bits\n");
+		exit (EXIT_FAILURE);
+	}
 
+	if (NULL == (buf = malloc ((sizeof *buf) * INPUTLEN)))
+	{
+		printf ("out of memory");
+		exit (EXIT_FAILURE);
+	}
+
+	// store last int of each iteration
+
+  more_input = 1;
+	while (more_input){
+		size_t amount_read;
+
+		buf[0] = last;
+		amount_read = fread (buf+1, sizeof *buf, INPUTLEN-1, fp) + 1;
+		if (amount_read != INPUTLEN)
+		{
+      if (ferror (fp))
+        {
+          printf ("error on stream\n");
+          break;
+        }
+      more_input = 0;
+		}
+
+		findkeys (buf, amount_read);
+		last = buf[amount_read-1];
+	}
+
+  db_insert (db, last, gpos++);
+
+	free (buf);
+	fclose (fp);
+
+  assert (db_close (db));
+
+//  assert (db = db_open ("db.bin", DB_MODE_READ_ONLY));
+//	test_index (argv[1]);
+//  assert (db_close (db));
+
+	return 0;
 }
