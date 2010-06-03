@@ -9,12 +9,6 @@
 
 void* db_open(char *name, const int read);
 
-<<<<<<< HEAD
-void db_close(void* dbf);
-void dbase_store(GDBM_FILE dbf,uint32_t key, uint32_t value);
-
-char* dbase_fetch(GDBM_FILE dbf, uint32_t key, uint32_t **value);
-=======
 #define DB_MODE_READ_ONLY   1
 #define DB_MODE_WRITE_ONLY  2
 
@@ -46,6 +40,5 @@ db_insert (struct db *d, uint32_t key, uint32_t value);
  */
 int32_t
 db_query (struct db *d, uint32_t key, uint32_t **values);
->>>>>>> upstream/master
 
 #endif
