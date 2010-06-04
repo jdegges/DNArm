@@ -1,13 +1,8 @@
 #ifndef _H_DB_FOO
 #define _H_DB_FOO
 
-#include <stdlib.h>
-#include <gdbm.h>
-#include <stdio.h>
-#include <string.h>
 #include <stdint.h>
-
-void* db_open(char *name, const int read);
+#include <stdbool.h>
 
 #define DB_MODE_READ_ONLY   1
 #define DB_MODE_WRITE_ONLY  2

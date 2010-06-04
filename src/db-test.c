@@ -7,7 +7,7 @@
 
 #include <db.h>
 
-const char dbn[] = "/path/to/db.txt";
+char dbn[] = "/path/to/db.txt";
 
 #define SIZE 42900
 
