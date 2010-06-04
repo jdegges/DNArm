@@ -1,70 +1,118 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<stdint.h>
+#include<stdbool.h>
+#include "db.h"
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
-#include </usr/include/stdint.h>
+int listSize;
+uint32_t maxValue;
+double seq;
 
-#include <omp.h>
+struct db{
+	int x;
+};
 
-#define BUF_SIZE 1024
+int remove_dups(uint32_t* list, int length)
+{
+	int i, j = 0;
 
-#define print_error(format, ...) { \
-  fprintf (stderr, "[%s:%d in %s] ", __FILE__, __LINE__, __func__); \
-  fprintf (stderr, format, ##__VA_ARGS__); \
-  fprintf (stderr, "\n"); \
+	for(i = 0; i < length; i++)
+	{
+		if(0 <= i-1 && list[i] == list[i-1])
+			i++;
+		else{
+			list[j] = list[i];
+			j++;
+		}
+	}
+
+	return j;
+
 }
 
-int cgm_omp(uint32_t* aList, uint32_t* bList, int aLength, int bLength, int gap, int offset, int keyLength, uint32_t** matches)
+int uint32_t_cmp(const void *a, const void *b)
 {
-	uint32_t* results = NULL;
-	int i = 0;
+	const uint32_t* cp_a = (const int*) a;
+	const uint32_t* cp_b = (const int*) b;
 
-	int mMax = aLength;
-	if(bLength < mMax)
-		mMax = bLength;
+	return *cp_a - *cp_b;
+}
 
-	results = (uint32_t*) malloc(sizeof(uint32_t)*mMax);
-	if(results == NULL){
+int32_t db_query (struct db *d, uint32_t key, uint32_t **values)
+{
+	int j;
+	uint32_t* list = NULL;
+	
+	list = (uint32_t*) malloc(sizeof(uint32_t)*listSize);
+	
+	if(list == NULL){
+		printf("Error allocating memory\n");
+		exit(-1);
+	}
+
+	for(j = 0; j < listSize; j++)
+		list[j] = rand() % maxValue;
+
+	qsort(list, listSize, sizeof(uint32_t), uint32_t_cmp);
+
+	*values = list;
+//	printf("Returning created list...\n");
+
+	return remove_dups(list, listSize);
+
+}
+
+
+int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, uint32_t** result)
+{
+	int i = 0, j = 0, k = 0, count = 0;
+	uint32_t* mem = NULL;
+
+	/* result should be combined length of all lists */
+	int max = aLength+bLength+cLength;
+	
+	mem = (uint32_t*) malloc(sizeof(uint32_t)*max);
+	
+	if(mem == NULL){
 		printf("Unable to allocate memory!\n");
 		exit(-1);
 	}
-	
-	#pragma omp parallel for schedule(dynamic, 1)
-	for(i = 0; i < aLength; i++)
+
+	/* add items in increasing order */
+	while(count < max)
 	{
-		results[i] = 0;
-		
-		int lower = 0;
-		int upper = bLength-1;
-				
-		while(lower <= upper){
-			int j = (upper + lower)/2;
-			if(bList[j] == aList[i] + keyLength + gap){
-				results[i] = aList[i] - offset;
-				break;
-			}
-			else if(bList[j] > aList[i] + keyLength + gap)
-				upper = j - 1;
-			else
-				lower = j + 1;
-		
+		if(i < aLength && (j >= bLength || a[i] <= b[j]) && (k >= cLength || a[i] <= c[k])){
+			mem[count] = a[i];
+			i++;
 		}
-		
+		else if(j < bLength && (k >= cLength || b[j] <= c[k])){
+			mem[count] = b[j];
+			j++;
+		}
+		else{
+			mem[count] = c[k];
+			k++;
+		}
+		count++;
 	}
 
-	matches = &results;
+	/* return the size of the results list */
+	*result = mem;
+	return count;
 }
 
-int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLength, uint32_t** matches, int gap, int startOffset)
+
+int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, uint32_t secLength, uint32_t** matches, uint32_t gap, uint32_t startOffset)
 {
 	int i = 0, j= 0, mLength = 0;
 	uint32_t* dubs = NULL;
+
+	if(aLength == 0 || bLength == 0)
+	{
+		*matches == NULL;
+		return 0;
+	}
 
 	/* maximum length is length of smaller list */
 	int mMax = aLength;
@@ -80,12 +128,15 @@ int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLe
 	/* loop through the items in the first list looking for matching items in the second list */
 	while(i < aLength && j < bLength){
 		while(j < bLength){
-			if(b[j] == a[i] + secLength + gap){
+			if(b[j] < a[i] + secLength + gap)
+				j++;
+			else if(b[j] > a[i] + secLength + gap)
+				break;
+			else{
 				dubs[mLength] = a[i]-startOffset;
 				mLength++;
 				break;
 			}
-			j++;
 		}
 		i++;
 	}
@@ -97,95 +148,206 @@ int doubleMatchAid(uint32_t* a, uint32_t* b, int aLength, int bLength, int secLe
 	}
 
 	free(dubs);
+	*matches = NULL;
+
 	return 0;
 
 }
 
-int uint32_t_cmp(const void *a, const void *b)
+int cgm(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t** matches, struct db* database)
 {
-	const uint32_t* cp_a = (const int*) a;
-	const uint32_t* cp_b = (const int*) b;
+	int sections, secLength, aLength, bLength, cLength, dLength;
+	int double1, double2, double3, double4, double5, double6;
+	int quad, triple1, triple2, triple3, triple4;
+	int itempA, itempB;
+	int count;
+	
+	struct timeval t1, t2;
+    double elapsedTime;
+	
+	uint32_t* dubMatches1 = NULL;
+	uint32_t* dubMatches2 = NULL;
+	uint32_t* dubMatches3 = NULL;
+	uint32_t* dubMatches4 = NULL;
+	uint32_t* dubMatches5 = NULL;
+	uint32_t* dubMatches6 = NULL;
+	
+	uint32_t* tripMatches1 = NULL;
+	uint32_t* tripMatches2 = NULL;
+	uint32_t* tripMatches3 = NULL;
+	uint32_t* tripMatches4 = NULL;
 
-	return *cp_a - *cp_b;
+	uint32_t* quadMatches = NULL;
+
+	uint32_t* tempA;
+	uint32_t* tempB;
+	uint32_t* tempC;
+
+	int keySize = 16;
+
+	uint32_t* aList = NULL;
+	uint32_t* bList = NULL;
+	uint32_t* cList = NULL;
+	uint32_t* dList = NULL;
+
+	aLength = db_query(database, a, &aList);
+	bLength = db_query(database, b, &bList);
+	cLength = db_query(database, c, &cList);
+	dLength = db_query(database, d, &dList);
+	
+	gettimeofday(&t1, NULL);
+
+	double1 = doubleMatch(aList, bList, aLength, bLength, keySize, &dubMatches1, 0, 0);
+	double2 = doubleMatch(aList, cList, aLength, cLength, keySize, &dubMatches2, keySize, 0);
+	double3 = doubleMatch(aList, dList, aLength, dLength, keySize, &dubMatches3, keySize*2, 0);
+	double4 = doubleMatch(bList, cList, bLength, cLength, keySize, &dubMatches4, 0, keySize);
+	double5 = doubleMatch(bList, dList, bLength, dLength, keySize, &dubMatches5, keySize, keySize);
+	double6 = doubleMatch(cList, dList, cLength, dLength, keySize, &dubMatches6, 0, keySize*2);
+
+	quad = doubleMatch(dubMatches1, dubMatches6, double1, double6, 0, &quadMatches, 0, 0);
+	triple1 = doubleMatch(dubMatches1, dubMatches2, double1, double2, 0, &tripMatches1, 0, 0);
+	triple2 = doubleMatch(dubMatches1, dubMatches3, double1, double3, 0, &tripMatches2, 0, 0);
+	triple3 = doubleMatch(dubMatches2, dubMatches3, double2, double3, 0, &tripMatches3, 0, 0);
+	triple4 = doubleMatch(dubMatches4, dubMatches5, double4, double5, 0, &tripMatches4, 0, 0);
+
+	if(quad > 0){
+		*matches = quadMatches;
+		count = quad;
+	}
+	else if(triple1 + triple2 + triple3 + triple4 > 0)
+	{
+		itempA = mergeLists(tripMatches1, tripMatches2, NULL, triple1, triple2, 0, &tempA);
+		itempB = mergeLists(tripMatches3, tripMatches4, NULL, triple3, triple4, 0, &tempB);
+		
+		count = mergeLists(tempA, tempB, NULL, itempA, itempB, 0, &tempC);
+		*matches = tempC;
+		
+		free(tempA);
+		free(tempB);
+
+	}
+	else if(double1 + double2 + double3 + double4 + double5 + double6 > 0)
+	{
+		itempA = mergeLists(dubMatches1, dubMatches2, dubMatches3, double1, double2, double3, &tempA);
+		itempB = mergeLists(dubMatches4, dubMatches5, dubMatches6, double4, double5, double6, &tempB);
+
+		count = mergeLists(tempA, tempB, NULL, itempA, itempB, 0, &tempC);
+		*matches = tempC;
+
+		free(tempA);
+		free(tempB);
+
+	}
+	else
+	{
+		itempA = mergeLists(aList, bList, NULL, aLength, bLength, 0, &tempA);
+		itempB = mergeLists(cList, dList, NULL, cLength, dLength, 0, &tempB);
+		
+		count = mergeLists(tempA, tempB, NULL, itempA, itempB, 0, &tempC);
+		*matches = tempC;
+
+		free(tempA);
+		free(tempB);
+	}
+
+	/* free any allocated memory and return the number items in matches */
+		free(aList);
+		free(bList);
+		free(cList);
+		free(dList);
+		free(tripMatches1);
+		free(tripMatches2);
+		free(tripMatches3);
+		free(tripMatches4);
+		free(dubMatches1);
+		free(dubMatches2);
+		free(dubMatches3);
+		free(dubMatches4);
+		free(dubMatches5);
+		free(dubMatches6);
+	if(quad == 0)
+		free(quadMatches);
+
+	gettimeofday(&t2, NULL);
+	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+	elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+	seq += elapsedTime;
+//	printf("Time: %f\n", elapsedTime);
+
+	return count;
 }
 
 int main(int argc, char* argv[])
 {
 	if(argc != 6){
-		printf("USAGE: cgmtest MAXVALUE KEYSIZE LISTSIZE REPS MAXCOMPUTEUNITS\nNote: list size should be less than  the min of max work items[0] and max work items[1]\n");
+		printf("USAGE: cgmtest MAXVALUE LISTSIZE THREADS CHUNKSIZE REPS \n");
 		exit(-1);
 	}
 
-	uint32_t* aList = NULL;
-	uint32_t* bList = NULL;
-	uint32_t* matches = NULL;
-	uint32_t* matches2 = NULL;
 	
-	int maxValue = atoi(argv[1]);
-	int keySize = atoi(argv[2]);
-	int listSize = atoi(argv[3]);
-	int reps = atoi(argv[4]);
-	int cpus = atoi(argv[5]);
 
-	aList = (uint32_t*) malloc(sizeof(uint32_t)*listSize);
-	bList = (uint32_t*) malloc(sizeof(uint32_t)*listSize);
+	maxValue = (uint32_t) strtoul(argv[1], NULL, 10);
+	listSize = atoi(argv[2]);
+	int threads = atoi(argv[3]);
+	int p = atoi(argv[4]);
+	int reps = atoi(argv[5]);
+	
+	omp_set_num_threads(threads);
 
-	if(aList == NULL || bList == NULL){
-		printf("Error allocating memory\n");
-		exit(-1);
-	}
-	
-	omp_set_num_threads(cpus);
-	
+	uint32_t* results = NULL;
+	struct db mydb;
+
 	struct timeval t1, t2;
-    double elapsedTime;
-	double openmp = 0, seq = 0;
-
+	seq = 0;
+	double overall = 0;
 	srand( (unsigned)time(NULL));
 
+	gettimeofday(&t1, NULL);
+	
 	int i, j;
 
+	#pragma omp parallel for reduction(+:seq) \
+								schedule(dynamic, p) \
+								private(results)
 	for(i = 0; i < reps; i++)
 	{
-		printf("*****Trial %d*****\nGenerating lists...", i);
-		for(j = 0; j < listSize; j++)
-			aList[j] = rand() % maxValue;
-
-		for(j = 0; j < listSize; j++)
-			bList[j] = rand() % maxValue;
-		printf("Done.\nSorting...");
-		qsort(aList, listSize, sizeof(uint32_t), uint32_t_cmp);
-		qsort(bList, listSize, sizeof(uint32_t), uint32_t_cmp);
+//		printf("Executing...\n");
 		
-		printf("Done.\nExecuting...\n");
-		
-		
-		gettimeofday(&t1, NULL);
+		cgm(0,0,0,0, &results, &mydb);
 
-		doubleMatchAid(aList, bList, listSize, listSize, keySize, &matches, 0, 0);
-
-		gettimeofday(&t2, NULL);
-		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
-		elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
-		seq += elapsedTime;
-		printf("Sequential: %f\n", elapsedTime);
+		free(results);
+		results = NULL;
 
 
-
-		gettimeofday(&t1, NULL);
-
-		cgm_omp(aList, bList, listSize, listSize, 0, 0, keySize, &matches);
-
-		gettimeofday(&t2, NULL);
-		elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
-		elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
-		openmp += elapsedTime;
-		printf("OpenMP: %f\n", elapsedTime);
-		
 	}
+	
+	gettimeofday(&t2, NULL);
+	overall = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+	overall += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
 
-	printf("\n*****Results*****:\n");
-	printf("Sequential: %f\n", seq/reps);
-	printf("OpenMP: %f\n", openmp/reps);
+//	struct db d;
+//	uint32_t u;
+//	uint32_t* vals;
+//	double elapsed = 0;
+//	double dbTime = 0;
+//
+//	for(i = 0; i < reps; i++)
+//	{
+//		gettimeofday(&t1, NULL);
+//		db_query (&d, u, &vals);
+//
+//		gettimeofday(&t2, NULL);
+//		elapsed = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
+//		elapsed += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+//
+//		dbTime += elapsed;
+//	}
+	
+	printf("\n*****Result*****:\n");
+	printf("Average Time (w/o generating lists): %f\n", seq/reps);
+	printf("Average Time (w/ generating lists): %f\n", overall/reps);
+//	printf("Average List Generation Time: %f\n", dbTime/reps);
+//	printf("Calculated Average Time (w/o generating lists): %f\n", overall/reps - dbTime/reps*4);
 
 }
+
