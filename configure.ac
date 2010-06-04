@@ -78,11 +78,15 @@ AM_CONDITIONAL([BUILD_GENOME_INDEX], [test x$BUILD_GENOME_INDEX = xyes])
 
 # index
 #
-BUILD_INDEX=yes
+BUILD_INDEX=no
+AS_IF([test x$HAVE_PTHREADS = xyes && test x$HAVE_LIBTC = xyes],
+  [BUILD_INDEX=yes])
 AC_ARG_WITH([index],
   AC_HELP_STRING([--without-index], [Do not build index.]),
   [BUILD_INDEX=no])
 AC_SUBST([BUILD_INDEX], [${BUILD_INDEX}])
+AC_SUBST([INDEX_LDADD], ["${PTHREAD_LIBS} ${LIBTC_LIBS}"])
+AC_SUBST([INDEX_CFLAGS], ["${PTHREAD_CFLAGS} ${LIBTC_CFLAGS}"])
 AM_CONDITIONAL([BUILD_INDEX], [test x$BUILD_INDEX = xyes])
 
 # memdb-test
@@ -140,7 +144,7 @@ AC_SUBST([TCADB_TEST_CFLAGS], ["${PTHREAD_CFLAGS} ${LIBTC_CFLAGS}"])
 AM_CONDITIONAL([BUILD_TCADB_TEST], [test x$BUILD_TCADB_TEST = xyes])
 
 # tchdb-test
-BUILD_TCHDB_TEST=yes
+BUILD_TCHDB_TEST=no
 AS_IF([test x$HAVE_PTHREADS = xyes && test x$HAVE_LIBTC = xyes],
   [BUILD_TCHDB_TEST=yes])
 AC_ARG_WITH([tchdb-test],
