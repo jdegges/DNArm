@@ -61,7 +61,7 @@ struct cldb
   uint64_t *l1;       /* 2KB */
   uint32_t *l2;       /* 128MB */
   uint32_t *l2_switch;
-  uint32_t *data2;	
+  uint32_t *data2;
   uint32_t *data;     /* CACHE_BYTES bytes */
   uint32_t l1_index;  /* currently cached L2 block */
 
@@ -352,6 +352,7 @@ cldb_new (char *path, char *geometry, char *genome)
           uint32_t l2_index = last & 0x00FFFFFF;
           db->data[db->l2[1+l2_index*2]++
                    + db->l2[0+l2_index*2]] = genome_position++;
+          l2_data_size[1]++;
         }
 
       if (0 != fclose (fp) && (fp = NULL))
@@ -368,12 +369,17 @@ cldb_new (char *path, char *geometry, char *genome)
           if (l2_data_count[l2] != db->l2[1+l2*2])
             {
               print_error ("L2 data counts do not match up!");
+              fprintf (stderr, "l2_data_count[%03u]:%u\n", l2,
+                       l2_data_count[l2]);
+              fprintf (stderr, "db->l2[1+%03u*2]:   %u\n", l2, db->l2[1+l2*2]);
               goto exit;
             }
         }
       if (l2_data_size[0] != l2_data_size[1])
         {
           print_error ("L2 data sizes do not match up!");
+          fprintf (stderr, "l2_data_size[0]: %lu\n", l2_data_size[0]);
+          fprintf (stderr, "l2_data_size[1]: %lu\n", l2_data_size[1]);
           goto exit;
         }
 
@@ -385,7 +391,8 @@ cldb_new (char *path, char *geometry, char *genome)
       xfseekwrite (db->l2, 1, L2_BYTES, db_offset, SEEK_SET, db->fp);
 
       /* write out L2 data block */
-      xfseekwrite (db->data, 1, db->l1[1+l1*2], db_offset + L2_BYTES, SEEK_SET, db->fp);
+      xfseekwrite (db->data, 1, db->l1[1+l1*2], db_offset + L2_BYTES, SEEK_SET,
+                   db->fp);
 
       /* increment file offset */
       db_offset += L2_BYTES + db->l1[1+l1*2];
@@ -412,25 +419,27 @@ exit:
 
 
 void*
-cldb_precache(struct cldb* db){
+cldb_precache (struct cldb* db)
+{
+  while (1)
+    {
+      uint32_t l1_switch_index;
 
+      pthread_mutex_lock (&backup_lock);
 
-while(1){
- pthread_mutex_lock(&backup_lock); 
+      l1_switch_index = db->l1_index + 1;
 
-/* read in the adjacent L2 index segment */
-  xfseekread (db->l2_switch, 1, L2_BYTES, L2_OFFSET + db->l1[0+1*2], SEEK_SET,
-              db->fp);
+      /* read in the adjacent L2 index segment */
+      xfseekread (db->l2_switch, 1, L2_BYTES, db->l1[0+l1_switch_index*2],
+                  SEEK_SET, db->fp);
 
-  /* read in the adjacent L2's data segment */
-  xfseekread (db->data2, 1, db->l1[1+1*2], L2_OFFSET + db->l1[0+1*2] + L2_BYTES,
-              SEEK_SET, db->fp);
+      /* read in the adjacent L2's data segment */
+      xfseekread (db->data2, 1, db->l1[1+l1_switch_index*2],
+                  db->l1[0+l1_switch_index*2] + L2_BYTES, SEEK_SET, db->fp);
 
-pthread_mutex_unlock(&backup_lock);
-pthread_cond_wait (&cache_switch, &backup_lock);
-}
-
-
+      pthread_mutex_unlock (&backup_lock);
+      pthread_cond_wait (&cache_switch, &backup_lock);
+    }
 }
 
 
@@ -443,7 +452,7 @@ cldb_open (char *path, int threads)
 
   pthread_cond_init (&cache_switch, NULL);
   pthread_mutex_init (&cache_lock, NULL);
-	pthread_mutex_init (&backup_lock, NULL);
+  pthread_mutex_init (&backup_lock, NULL);
   num_threads = threads;
 
   if (NULL == (db = cldb_alloc ()))
@@ -479,13 +488,12 @@ cldb_open (char *path, int threads)
   xfseekread (db->l1, 1, L1_BYTES, L1_OFFSET, SEEK_SET, db->fp);
 
   /* read in the first L2 index segment */
-  xfseekread (db->l2, 1, L2_BYTES, L2_OFFSET + db->l1[0+0*2], SEEK_SET,
-              db->fp);
+  xfseekread (db->l2, 1, L2_BYTES, db->l1[0+0*2], SEEK_SET, db->fp);
 
   /* read in the first L2's data segment */
-  xfseekread (db->data, 1, db->l1[1+0*2], L2_OFFSET + db->l1[0+0*2] + L2_BYTES,
-              SEEK_SET, db->fp);
-  
+  xfseekread (db->data, 1, db->l1[1+0*2], db->l1[0+0*2] + L2_BYTES, SEEK_SET,
+              db->fp);
+
   pthread_create(&precache, NULL, cldb_precache, (void*) &db);
 
   return db;
@@ -518,44 +526,17 @@ cldb_close (struct cldb *db)
 void
 cldb_wait (struct cldb *db, uint32_t l1)
 {
-	//assuming no parallelization of reads
-	//lock so cache_blocks wont be accessed
+  //assuming no parallelization of reads
+  //lock so cache_blocks wont be accessed
   pthread_mutex_lock (&backup_lock);
-	//switch current cache to the backup cache
+  //switch current cache to the backup cache
   db->l2 = db->l2_switch;
   db->data = db->data2;
-	//update L1 index
+  //update L1 index
   db->l1_index = l1;
-	pthread_mutex_unlock (&backup_lock);
-	//get precache thread to get next precache
-	pthread_cond_broadcast(&cache_switch);
-
-	
-
-/*  if (num_wait < (num_threads - 1))
-    {
-      num_wait++;
-      pthread_cond_wait (&cache_switch, &cache_lock);
-      pthread_mutex_unlock (&cache_lock);
-    }
-  else
-    {
-      pthread_cond_broadcast (&cache_switch);
-      num_wait = 0;
-      pthread_mutex_unlock (&cache_lock);
-*/
-  
-
-
-	    /* read in the L2 index segment */
-//      xfseekread (db->l2, 1, L2_BYTES, L2_OFFSET + db->l1[0+(l1+1)*2],
-  //                SEEK_SET, db->fp);
-
-      /* read in the L2 data segment */
-  //    xfseekread (db->data, 1, db->l1[1+(l1+1)*2],
-    //              L2_OFFSET + db->l1[0+(l1+1)*2] + L2_BYTES, SEEK_SET,
-      //            db->fp);
-//    }
+  pthread_mutex_unlock (&backup_lock);
+  //get precache thread to get next precache
+  pthread_cond_broadcast(&cache_switch);
 }
 
 int32_t
