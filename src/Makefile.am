@@ -20,6 +20,8 @@ endif
 if BUILD_GENOME_INDEX
 bin_PROGRAMS += genome-index
 genome_index_SOURCES = genome-index.c cvdb.c cldb.c
+genome_index_LADD = $(GENOME_INDEX_LADD)
+genome_index_CFLAGS = $(GENOME_INDEX_CFLAGS)
 endif
 
 if BUILD_INDEX
