@@ -437,8 +437,8 @@ cldb_precache (struct cldb* db)
       xfseekread (db->data2, 1, db->l1[1+l1_switch_index*2],
                   db->l1[0+l1_switch_index*2] + L2_BYTES, SEEK_SET, db->fp);
 
-      pthread_mutex_unlock (&backup_lock);
       pthread_cond_wait (&cache_switch, &backup_lock);
+      pthread_mutex_unlock (&backup_lock);
     }
 }
 
@@ -522,21 +522,40 @@ cldb_close (struct cldb *db)
   cldb_free (db);
   return retval;
 }
-
 void
 cldb_wait (struct cldb *db, uint32_t l1)
 {
-  //assuming no parallelization of reads
-  //lock so cache_blocks wont be accessed
-  pthread_mutex_lock (&backup_lock);
-  //switch current cache to the backup cache
-  db->l2 = db->l2_switch;
-  db->data = db->data2;
-  //update L1 index
-  db->l1_index = l1;
-  pthread_mutex_unlock (&backup_lock);
-  //get precache thread to get next precache
-  pthread_cond_broadcast(&cache_switch);
+
+
+  int ret =  pthread_barrier_wait(&switch_barrier);
+
+  //a single thread needs to do switch the threads
+  if  (ret ==PTHREAD_BARRIER_SERIAL_THREAD){
+       //lock so cache_blocks wont be accessed
+      pthread_mutex_lock (&backup_lock);
+
+      //switch current cache to the backup cache
+      uint32_t temp = db->l2;
+      db->l2 = db->l2_switch;
+      db->l2_switch = temp;
+
+      temp = db->data;
+      db->data = db->data2;
+      db->data2 = temp;
+      //update L1 index
+      db->l1_index = l1;
+
+      //cache_switch thread will need backup_lock to change the precache
+      pthread_cond_broadcast(&cache_switch);
+      pthread_mutex_unlock (&backup_lock);
+
+      //the other threads need cache_lock to know that the switch is complete
+      //get precache thread to get next precache
+    }
+  //the rest need to wait for the switching to finish, wait again
+  ret =  pthread_barrier_wait(&switch_barrier);
+
+
 }
 
 int32_t
