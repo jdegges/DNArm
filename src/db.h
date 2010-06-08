@@ -11,7 +11,7 @@ struct db;
  * Returns NULL if some error occurred.
  */
 struct db *
-db_open (const char *path, const int parallel);
+db_open (char *path, const int parallel);
 
 /*
  * Close db.
