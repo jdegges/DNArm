@@ -1,7 +1,7 @@
 #ifndef _FGM_H
 #define _FGM_H
 
-//#include<stdio.h>
+#include<stdio.h>
 #include<stdlib.h>
 #include</usr/include/stdint.h>
 
