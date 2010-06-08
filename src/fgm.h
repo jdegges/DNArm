@@ -1,7 +1,7 @@
-#ifndef _DB_H
-#define _DB_H
+#ifndef _FGM_H
+#define _FGM_H
 
-#include<stdio.h>
+//#include<stdio.h>
 #include<stdlib.h>
 #include</usr/include/stdint.h>
 
@@ -9,9 +9,9 @@
 #define INDEL_THRESHOLD 27
 
 //flags for mutation flags
-#define SNP 1
-#define INSERT 2
-#define DELETE 3
+#define SNP 0
+#define INS 1
+#define DEL -1
 
 typedef struct mutationData
 {
