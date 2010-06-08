@@ -5,6 +5,14 @@
 #include<stdbool.h>
 #include "db.h"
 
+struct cgmResult{
+	int read[3]; // 16 bases in each int
+
+	uint32_t* matches; // pointer to list of match locations
+	int length; // length of match list
+};
+
+
 int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, int cLength, uint32_t** result)
 {
 	int i = 0, j = 0, k = 0, count = 0;
@@ -12,9 +20,9 @@ int mergeLists(uint32_t* a, uint32_t* b, uint32_t* c, int aLength, int bLength, 
 
 	/* result should be combined length of all lists */
 	int max = aLength+bLength+cLength;
-	
+
 	mem = (uint32_t*) malloc(sizeof(uint32_t)*max);
-	
+
 	if(mem == NULL){
 		printf("Unable to allocate memory!\n");
 		exit(-1);
@@ -95,149 +103,104 @@ int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, uint32_t sec
 
 }
 
-int cgm(uint32_t a, uint32_t b, uint32_t c, uint32_t d, uint32_t** matches, struct db* database)
+int cgm_solver(uint32_t a, uint32_t b, uint32_t c, uint32_t** matches, struct db* database)
 {
-	int sections, secLength, aLength, bLength, cLength, dLength;
-	int double1, double2, double3, double4, double5, double6;
-	int quad, triple1, triple2, triple3, triple4;
-	int itempA, itempB;
+	int sections, secLength, aLength, bLength, cLength;
+	int double1, double2, double3;
+	int triple;
 	int count;
-	
+
 	uint32_t* dubMatches1 = NULL;
 	uint32_t* dubMatches2 = NULL;
 	uint32_t* dubMatches3 = NULL;
-	uint32_t* dubMatches4 = NULL;
-	uint32_t* dubMatches5 = NULL;
-	uint32_t* dubMatches6 = NULL;
-	
-	uint32_t* tripMatches1 = NULL;
-	uint32_t* tripMatches2 = NULL;
-	uint32_t* tripMatches3 = NULL;
-	uint32_t* tripMatches4 = NULL;
 
-	uint32_t* quadMatches = NULL;
+	uint32_t* tripMatches = NULL;
 
-	uint32_t* tempA;
-	uint32_t* tempB;
-	uint32_t* tempC;
+	uint32_t* temp;
 
 	int keySize = 16;
 
 	uint32_t* aList = NULL;
 	uint32_t* bList = NULL;
 	uint32_t* cList = NULL;
-	uint32_t* dList = NULL;
 
-	#pragma omp parallel sections
-	{
-		aLength = db_query(database, a, &aList);
-		#pragma omp section
-		bLength = db_query(database, b, &bList);
-		#pragma omp section
-		cLength = db_query(database, c, &cList);
-		#pragma omp section
-		dLength = db_query(database, d, &dList);
+	aLength = db_query(database, a, &aList);
+	bLength = db_query(database, b, &bList);
+	cLength = db_query(database, c, &cList);
+
+	double1 = doubleMatch(aList, bList, aLength, bLength, keySize, &dubMatches1, 0, 0);
+	double2 = doubleMatch(aList, cList, aLength, cLength, keySize, &dubMatches2, keySize, 0);
+	double3 = doubleMatch(bList, cList, bLength, cLength, keySize, &dubMatches3, 0, keySize);
+
+	triple = doubleMatch(dubMatches1, dubMatches2, double1, double2, 0, &tripMatches, 0, 0);
+
+	if(triple > 0){
+		*matches = tripMatches;
+		count = triple;
 	}
-
-	
-	#pragma omp parallel sections
+	else if(double1 + double2 + double3 > 0)
 	{
-		double1 = doubleMatch(aList, bList, aLength, bLength, keySize, &dubMatches1, 0, 0);
-		#pragma omp section
-		double2 = doubleMatch(aList, cList, aLength, cLength, keySize, &dubMatches2, keySize, 0);
-		#pragma omp section
-		double3 = doubleMatch(aList, dList, aLength, dLength, keySize, &dubMatches3, keySize*2, 0);
-		#pragma omp section
-		double4 = doubleMatch(bList, cList, bLength, cLength, keySize, &dubMatches4, 0, keySize);
-		#pragma omp section
-		double5 = doubleMatch(bList, dList, bLength, dLength, keySize, &dubMatches5, keySize, keySize);
-		#pragma omp section
-		double6 = doubleMatch(cList, dList, cLength, dLength, keySize, &dubMatches6, 0, keySize*2);
-	}
+		count = mergeLists(dubMatches1, dubMatches2, dubMatches3, double1, double2, double3, &temp);
 
-	#pragma omp parallel sections
-	{
-		quad = doubleMatch(dubMatches1, dubMatches6, double1, double6, 0, &quadMatches, 0, 0);
-		#pragma omp section
-		triple1 = doubleMatch(dubMatches1, dubMatches2, double1, double2, 0, &tripMatches1, 0, 0);
-		#pragma omp section
-		triple2 = doubleMatch(dubMatches1, dubMatches3, double1, double3, 0, &tripMatches2, 0, 0);
-		#pragma omp section
-		triple3 = doubleMatch(dubMatches2, dubMatches3, double2, double3, 0, &tripMatches3, 0, 0);
-		#pragma omp section
-		triple4 = doubleMatch(dubMatches4, dubMatches5, double4, double5, 0, &tripMatches4, 0, 0);
-	}
-
-	if(quad > 0){
-		*matches = quadMatches;
-		count = quad;
-	}
-	else if(triple1 + triple2 + triple3 + triple4 > 0)
-	{
-		#pragma omp parallel sections
-		{
-			itempA = mergeLists(tripMatches1, tripMatches2, NULL, triple1, triple2, 0, &tempA);
-			#pragma omp section
-			itempB = mergeLists(tripMatches3, tripMatches4, NULL, triple3, triple4, 0, &tempB);
-		}
-		
-		count = mergeLists(tempA, tempB, NULL, itempA, itempB, 0, &tempC);
-		*matches = tempC;
-		
-		free(tempA);
-		free(tempB);
-
-	}
-	else if(double1 + double2 + double3 + double4 + double5 + double6 > 0)
-	{
-		#pragma omp parallel sections
-		{
-			itempA = mergeLists(dubMatches1, dubMatches2, dubMatches3, double1, double2, double3, &tempA);
-			#pragma omp section
-			itempB = mergeLists(dubMatches4, dubMatches5, dubMatches6, double4, double5, double6, &tempB);
-		}
-		
-		count = mergeLists(tempA, tempB, NULL, itempA, itempB, 0, &tempC);
-		*matches = tempC;
-
-		free(tempA);
-		free(tempB);
-
+		*matches = temp;
 	}
 	else
 	{
-		#pragma omp parallel sections
-		{
-			itempA = mergeLists(aList, bList, NULL, aLength, bLength, 0, &tempA);
-			#pragma omp section
-			itempB = mergeLists(cList, dList, NULL, cLength, dLength, 0, &tempB);
-		}
-		
-		count = mergeLists(tempA, tempB, NULL, itempA, itempB, 0, &tempC);
-		*matches = tempC;
+		count = mergeLists(aList, bList, cList, aLength, bLength, cLength, &temp);
 
-		free(tempA);
-		free(tempB);
+		*matches = temp;
 	}
 
 	/* free any allocated memory and return the number items in matches */
 		free(aList);
 		free(bList);
 		free(cList);
-		free(dList);
-		free(tripMatches1);
-		free(tripMatches2);
-		free(tripMatches3);
-		free(tripMatches4);
 		free(dubMatches1);
 		free(dubMatches2);
 		free(dubMatches3);
-		free(dubMatches4);
-		free(dubMatches5);
-		free(dubMatches6);
-	if(quad == 0)
-		free(quadMatches);
+	if(triple == 0)
+		free(tripMatches);
 
 	return count;
+}
+
+int cgm_thread(int** reads, uint32_t numReads, uint32_t startPos, uint32_t numToRead, struct db* database)
+{
+	int i;
+
+	struct cgmResult* results = (struct cgmResult*) malloc(sizeof(struct cgmResult)*numToRead);
+	if(results == NULL){
+		printf("Unable to allocate memory!");
+		exit(-1);
+	}
+	
+	for(i = 0; i < numToRead; i++){
+		results[i].read[0] = reads[startPos+i][0];
+		results[i].read[1] = reads[startPos+i][1];
+		results[i].read[2] = reads[startPos+i][2];
+		results[i].length = cgm_solver(reads[startPos+i][0], reads[startPos+i][1], reads[startPos+i][2], &results[i].matches, database);
+
+	}
+
+	int j = fgmStart(results, i);
+	return i;
+}
+
+int cgm(int** reads, uint32_t numReads, int chunkSize, struct db* database)
+{
+	int i;
+
+	#pragma omp parallel for schedule(dynamic, 1)
+	for(i = 0; i < numReads; i++)
+	{
+		int numToRead = chunkSize;
+		if(i*chunkSize > numReads)
+			numToRead = numReads - (i-1)*chunkSize;
+
+		cgm_thread(reads, numReads, i*chunkSize, numToRead, database);
+
+	}
+
+	return numReads;
 }
 
