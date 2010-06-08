@@ -82,8 +82,10 @@ int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, uint32_t sec
 			else if(b[j] > a[i] + secLength + gap)
 				break;
 			else{
-				dubs[mLength] = a[i]-startOffset;
-				mLength++;
+				if(startOffset < a[i]){
+					dubs[mLength] = a[i]-startOffset;
+					mLength++;
+				}
 				break;
 			}
 		}
