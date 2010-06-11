@@ -15,9 +15,9 @@
 
 typedef struct mutationData
 {
-	char * mods;	//what the nucleotide should be changed to...
-	unsigned int * locs;	//the location at which the data should be changed.
-	int * ins;	//indicates if this should be an insertion.
+	char mods [16];	//what the nucleotide should be changed to...
+	uint32_t locs [16];	//the location at which the data should be changed.
+	int ins [16];	//indicates if this should be an insertion.
 			//note: an insertion will list the same location multiple times, while a deletion will have a "D" in the corresponding nucleotide modification location.
 	int len;
 } mData;
