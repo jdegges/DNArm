@@ -5,7 +5,7 @@
 #include<stdbool.h>
 #include "db.h"
 
-struct cgmResult{
+struct cgmRes{
 	int read[3]; // 16 bases in each int
 
 	uint32_t* matches; // pointer to list of match locations
@@ -166,11 +166,11 @@ int cgm_solver(uint32_t a, uint32_t b, uint32_t c, uint32_t** matches, struct db
 	return count;
 }
 
-int cgm(int** reads, uint32_t numReads, int chunkSize, struct db* database)
+int cgm(uint32_t* genome, uint32_t gLength, int** reads, uint32_t numReads, int chunkSize, struct db* database)
 {
 	int i;
 
-	struct cgmResult* results = (struct cgmResult*) malloc(sizeof(struct cgmResult)*numReads);
+	struct cgmRes* results = (struct cgmRes*) malloc(sizeof(struct cgmRes)*numReads);
 	if(results == NULL){
 		printf("Unable to allocate memory!");
 		exit(-1);
@@ -186,7 +186,9 @@ int cgm(int** reads, uint32_t numReads, int chunkSize, struct db* database)
 		results[i].length = cgm_solver(reads[i][0], reads[i][1], reads[i][2], &results[i].matches, database);
 	}
 
-	int j = fgmStart(results, i);
+	int j = fgmLaunch(genome, gLength, results, i);
+
+	free(results);
 
 	return i;
 }
