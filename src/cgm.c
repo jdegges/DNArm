@@ -4,6 +4,9 @@
 #include<stdint.h>
 #include<stdbool.h>
 #include "db.h"
+#include "fgmcl.h"
+
+#define CHUNKSIZE 1024
 
 struct cgmRes{
 	int read[3]; // 16 bases in each int
@@ -191,4 +194,60 @@ int cgm(uint32_t* genome, uint32_t gLength, int** reads, uint32_t numReads, int 
 	free(results);
 
 	return i;
+}
+
+int main(int argc, char* argv[])
+{
+	if(argc != 7){
+		printf("USAGE: cgm GENOMEFILE GENOMESIZE READFILE READFILESIZE DATABASEFILE THREADS\n");
+		exit(-1);
+	}
+
+	FILE* g = fopen(argv[1], "r");
+	int gSize = atoi(argv[2]);
+	FILE* r = fopen(argv[3], "r");
+	int numReads = atoi(argv[4]);
+	struct db* database = db_open(argv[5], 1);
+	if(g == NULL || r == NULL || database == NULL){
+		printf("Error opening input file!\n");
+		exit(-1);
+	}
+	int threads = atoi(argv[6]);
+	
+	omp_set_num_threads(threads);
+	
+	uint32_t* genome = (uint32_t*) malloc(sizeof(uint32_t)*gSize);
+	if(genome == NULL){
+		printf("Error allocating memory!\n");
+		exit(-1);
+	}
+
+	int** reads = (int**) malloc(sizeof(int*)*CHUNKSIZE);
+	if(reads == NULL){
+		printf("Error allocating memory!\n");
+		exit(-1);
+	}
+	int i, j;
+	for(i = 0; i < CHUNKSIZE; i++){
+		reads[i] = (int*) malloc(sizeof(int)*4);
+		if(reads[i] == NULL){
+			printf("Error allocating memory!\n");
+			exit(-1);
+		}
+	}
+
+	fread(genome, gSize, gSize, g);
+
+	for(i = 0; i < numReads; i+=CHUNKSIZE){ 
+		for(j = 0; j < CHUNKSIZE && i+j < numReads; j++)
+			fread(&(reads[j][0]), 16, 16, r);
+
+		int num = CHUNKSIZE;
+		if(i + CHUNKSIZE > numReads)
+			num = numReads - i;
+		
+		cgm(genome,gSize,reads,num,16,database);
+	}
+
+	return 0;
 }
