@@ -10,6 +10,7 @@ uint32_t maxValue;
 double seq;
 int output = 0;
 
+uint32_t* list;
 
 
 struct cgmResult{
@@ -54,25 +55,9 @@ int num = 0;
 
 int32_t db_query (struct db *d, uint32_t key, uint32_t **values)
 {
-	int j;
-	uint32_t* list = NULL;
-
-	list = (uint32_t*) malloc(sizeof(uint32_t)*listSize);
-
-	if(list == NULL){
-		printf("Error allocating memory\n");
-		exit(-1);
-	}
-	
-	for(j = 0; j < listSize; j++)
-		list[j] = rand() % maxValue;
-
-	qsort(list, listSize, sizeof(uint32_t), uint32_t_cmp);
-
 	*values = list;
 
-	return remove_dups(list, listSize);
-
+	return listSize;
 }
 
 
@@ -196,8 +181,6 @@ int cgm_solver(uint32_t a, uint32_t b, uint32_t c, uint32_t** matches, struct db
 	bLength = db_query(database, b, &bList);
 	cLength = db_query(database, c, &cList);
 
-	gettimeofday(&t1, NULL);
-
 	double1 = doubleMatch(aList, bList, aLength, bLength, keySize, &dubMatches1, 0, 0);
 	double2 = doubleMatch(aList, cList, aLength, cLength, keySize, &dubMatches2, keySize, 0);
 	double3 = doubleMatch(bList, cList, bLength, cLength, keySize, &dubMatches3, 0, keySize);
@@ -220,6 +203,12 @@ int cgm_solver(uint32_t a, uint32_t b, uint32_t c, uint32_t** matches, struct db
 		*matches = temp;
 	}
 
+	/* free any allocated memory and return the number items in matches */
+		free(dubMatches1);
+		free(dubMatches2);
+		free(dubMatches3);
+	if(triple == 0)
+		free(tripMatches);
 
 	if(output == 1){
 		#pragma omp critical
@@ -241,23 +230,6 @@ int cgm_solver(uint32_t a, uint32_t b, uint32_t c, uint32_t** matches, struct db
 		}
 	}
 
-	/* free any allocated memory and return the number items in matches */
-		free(aList);
-		free(bList);
-		free(cList);
-		free(dubMatches1);
-		free(dubMatches2);
-		free(dubMatches3);
-	if(triple == 0)
-		free(tripMatches);
-
-	gettimeofday(&t2, NULL);
-	elapsedTime = (t2.tv_sec - t1.tv_sec) * 1000.0;      // sec to ms
-	elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
-	seq += elapsedTime;
-//	printf("Time: %f\n", elapsedTime);
-
-
 	return count;
 }
 
@@ -265,15 +237,13 @@ int cgm_solver(uint32_t a, uint32_t b, uint32_t c, uint32_t** matches, struct db
 int cgm(int** reads, uint32_t numReads, int chunkSize, struct db* database)
 {
 	int i;
-	seq = 0;
+
 	struct timeval t1, t2;
 	double overall = 0;
-	
+
 	gettimeofday(&t1, NULL);
 
-//	uint32_t* matches = NULL;
-	#pragma omp parallel for reduction(+:seq) \
-							schedule(dynamic, chunkSize)
+	#pragma omp parallel for schedule(dynamic, chunkSize)
 	for(i = 0; i < numReads; i++)
 	{
 		uint32_t* matches = NULL;
@@ -286,7 +256,6 @@ int cgm(int** reads, uint32_t numReads, int chunkSize, struct db* database)
 	overall += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
 
 	printf("\n*****Result*****:\n");
-	printf("Average Time (w/o generating lists): %f\n", seq/numReads);
 	printf("Average Time (w/ generating lists and overhead): %f\n", overall/numReads);
 	printf("Total Time (w/ generating lists and overhead): %f\n", overall);
 	return i;
@@ -309,6 +278,11 @@ int main(int argc, char* argv[])
 	if(argc == 7 && argv[6][0] == '-' && argv[6][1] == 'o')
 		output = 1;
 
+	int j;
+	list = (uint32_t*) malloc(sizeof(uint32_t)*listSize);	
+	for(j = 0; j < listSize; j++)
+		list[j] = rand() % maxValue;
+
 	omp_set_num_threads(threads);
 
 	uint32_t* results = NULL;
@@ -319,11 +293,7 @@ int main(int argc, char* argv[])
 
 	int** reads = NULL;
 
-
-
 	cgm(reads,reps,p,&mydb);
 
-
-
+	return 0;
 }
-
