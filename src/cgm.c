@@ -166,43 +166,27 @@ int cgm_solver(uint32_t a, uint32_t b, uint32_t c, uint32_t** matches, struct db
 	return count;
 }
 
-int cgm_thread(int** reads, uint32_t numReads, uint32_t startPos, uint32_t numToRead, struct db* database)
-{
-	int i;
-
-	struct cgmResult* results = (struct cgmResult*) malloc(sizeof(struct cgmResult)*numToRead);
-	if(results == NULL){
-		printf("Unable to allocate memory!");
-		exit(-1);
-	}
-	
-	for(i = 0; i < numToRead; i++){
-		results[i].read[0] = reads[startPos+i][0];
-		results[i].read[1] = reads[startPos+i][1];
-		results[i].read[2] = reads[startPos+i][2];
-		results[i].length = cgm_solver(reads[startPos+i][0], reads[startPos+i][1], reads[startPos+i][2], &results[i].matches, database);
-
-	}
-
-	int j = fgmStart(results, i);
-	return i;
-}
-
 int cgm(int** reads, uint32_t numReads, int chunkSize, struct db* database)
 {
 	int i;
 
-	#pragma omp parallel for schedule(dynamic, 1)
-	for(i = 0; i < numReads; i++)
-	{
-		int numToRead = chunkSize;
-		if(i*chunkSize > numReads)
-			numToRead = numReads - (i-1)*chunkSize;
-
-		cgm_thread(reads, numReads, i*chunkSize, numToRead, database);
-
+	struct cgmResult* results = (struct cgmResult*) malloc(sizeof(struct cgmResult)*numReads);
+	if(results == NULL){
+		printf("Unable to allocate memory!");
+		exit(-1);
 	}
 
-	return numReads;
-}
 
+	#pragma omp parallel for schedule(dynamic, chunkSize)
+	for(i = 0; i < numReads; i++)
+	{
+		results[i].read[0] = reads[i][0];
+		results[i].read[1] = reads[i][1];
+		results[i].read[2] = reads[i][2];
+		results[i].length = cgm_solver(reads[i][0], reads[i][1], reads[i][2], &results[i].matches, database);
+	}
+
+	int j = fgmStart(results, i);
+
+	return i;
+}

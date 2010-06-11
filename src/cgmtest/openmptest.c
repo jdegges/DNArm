@@ -283,6 +283,10 @@ int main(int argc, char* argv[])
 	for(j = 0; j < listSize; j++)
 		list[j] = rand() % maxValue;
 
+	qsort(list, listSize, sizeof(uint32_t), uint32_t_cmp);
+
+	listSize = remove_dups(list,listSize);
+
 	omp_set_num_threads(threads);
 
 	uint32_t* results = NULL;
