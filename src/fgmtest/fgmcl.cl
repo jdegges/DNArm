@@ -15,9 +15,9 @@
 
 typedef struct mutationData
 {
-	char * mods;	//what the nucleotide should be changed to...
-	unsigned int * locs;	//the location at which the data should be changed.
-	int * ins;	//indicates if this should be an insertion.
+	char mods [16];	//what the nucleotide should be changed to...
+	unsigned int locs [16];	//the location at which the data should be changed.
+	int ins [16];	//indicates if this should be an insertion.
 			//note: an insertion will list the same location multiple times, while a deletion will have a "D" in the corresponding nucleotide modification location.
 	int len;
 } mData;
@@ -470,7 +470,7 @@ __kernel void fgm(__global mData * g_returnData, __global uint * list, uint list
 
 		if(min < THRESHOLD && minIdx == 3)	//if the non-skewed reference sequence is a very good match...
 		{
-			returnData = malloc(sizeof(mData)); //allocate our return data.
+//			returnData = malloc(sizeof(mData)); //allocate our return data.
 //			returnData -> mods = malloc(compCount[3] * sizeof(char));	//allocate space for the modification data tracking
 //			returnData -> locs = malloc(compCount[3] * sizeof(unsigned int));	//allocate space for modification location tracking
 			returnData -> len = compCount[3];	//store the length of the mutation index for this read.
@@ -528,7 +528,7 @@ __kernel void fgm(__global mData * g_returnData, __global uint * list, uint list
 		
 		//the indelLoc must be added to the start position to obtain the absolute location of the indel, relative to the absolute beginning of the REFERENCE GENOME. 
 		//
-		returnData = malloc(sizeof(mData)); //allocate our return data.
+//		returnData = malloc(sizeof(mData)); //allocate our return data.
 		
 		
 		//by the time we get here, we have the location of the indel, the length of the indel, and the proper diff sequences. we just need to calculate the actual differences. 
