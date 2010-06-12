@@ -1,4 +1,3 @@
-#                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.60])
@@ -66,6 +65,18 @@ AC_SUBST([GENOME_INDEX_LDADD], ["${PTHREAD_LIBS}"])
 AC_SUBST([GENOME_INDEX_CFLAGS], ["${PTHREAD_CFLAGS}"])
 AM_CONDITIONAL([BUILD_GENOME_INDEX], [test x$BUILD_GENOME_INDEX = xyes])
 
+# parallel_db
+BUILD_PARALLEL_DB=no
+AS_IF([test x$HAVE_PTHREADS = xyes ],
+  [BUILD_PARALLEL_DB=yes])
+AC_ARG_WITH([parallel-db],
+  AC_HELP_STRING([--without-parallel-db], [Do not build parallel-db.]),
+  [BUILD_PARALLEL_DB=no])
+AC_SUBST([BUILD_PARALLEL_DB], [${BUILD_PARALLEL_DB}])
+AC_SUBST([PARALLEL_DB_LDADD], ["${PTHREAD_LIBS}"])
+AC_SUBST([PARALLEL_DB_CFLAGS], ["${PTHREAD_CFLAGS}"])
+AM_CONDITIONAL([BUILD_PARALLEL_DB], [test x$BUILD_PARALLEL_DB = xyes])
+
 # readgen
 #
 BUILD_READGEN=yes
@@ -105,6 +116,9 @@ echo "====================="
 echo "ctb             : $BUILD_CTB"
 echo "genome-geometry : $BUILD_GENOME_GEOMETRY"
 echo "genome-index    : $BUILD_GENOME_INDEX"
+echo "parallel-db     : $BUILD_PARALLEL_DB"
 echo "readgen         : $BUILD_READGEN"
 echo "samplecl        : $BUILD_SAMPLECL"
 echo
+
+

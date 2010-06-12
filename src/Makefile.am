@@ -19,6 +19,13 @@ genome_index_LADD = $(GENOME_INDEX_LADD)
 genome_index_CFLAGS = $(GENOME_INDEX_CFLAGS)
 endif
 
+if BUILD_PARALLEL_DB
+bin_PROGRAMS += parallel-db
+parallel_db_SOURCES = db_test.c cldb.c cvdb.c
+parallel_db_LADD = $(PARALLEL_DB_LADD)
+parallel_db_CFLAGS = $(PARALLEL_DB_CFLAGS)
+endif
+
 if BUILD_READGEN
 bin_PROGRAMS += readgen
 readgen_SOURCES = readgen.c
