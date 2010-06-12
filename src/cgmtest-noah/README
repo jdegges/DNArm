@@ -1,0 +1,54 @@
+This is the OpenCL Research project.
+
+It is called cgmtest to denote it is a test environment comparing the
+efficiencies of OpenCL against the original sequential version of the
+course grain matcher (cgm).
+
+In this directory, you will find:
+
+./tester - runs the comprehensive testing harness
+*.c - Host programs to organize the OpenCL kernels
+*.cl - Kernel code
+
+INSTALLATION
+==================
+To run this testing harness, first ensure you have the latest version
+of ATI Stream (at least v2.1). You can download it from:
+
+http://developer.amd.com/gpu/ATIStreamSDK/Pages/default.aspx
+
+Once this is installed, set your environment as follows:
+
+PATH should include gcc
+ATISTREAM should include the root directory of ATI Stream:
+	/path/to/ati-stream-v2.1
+LDFLAGS=-L${ATISTREAM}/usr/lib/x86_64
+CPPFLAGS=-I${ATISTREAM}/usr/include
+LD_LIBRARY_PATH=${ATISTREAM}/usr/lib/x86_64
+LD_PRELOAD=${ATISTREAM}/usr/lib/x86_64/libatiocl64.so
+
+USAGE
+==================
+After the paths are set correctly, you can run the entire suite of tests
+with one command:
+
+./tester
+
+This runs all OpenCL implemenations (besides image memory optimization)
+using various key lengths, list sizes, and averages the time for
+a more accurate measurement. Note that the times dispalyed are measurements of
+the kernel execution and the enqueueing of the kernel and its arguments
+for execution. The buffer initialization and writing is not included.
+
+If you would like to run tests separately, you can use them as follows:
+
+./cgmtest - Sequential, OpenCL Simple "Linear" Parallel, OpenCL Binary Search
+./cgmtest MAXVALUE KEYSIZE LISTSIZE REPS MAXCOMPUTEUNITS [GPU_TOGGLE]
+
+./cgmtest_image - Image Memory Optimization
+cgmtest_image MAXVALUE KEYSIZE LISTSIZE REPS MAXCOMPUTEUNITS [GPU_TOGGLE]
+
+./cgmtest_cached - Constant Caching, Local Caching
+cgmtest_cached MAXVALUE KEYSIZE LISTSIZE REPS MAXCOMPUTEUNITS [GPU_TOGGLE]
+
+For all programs, a GPU_TOGGLE of 1 sets the kernel to use GPU devices.

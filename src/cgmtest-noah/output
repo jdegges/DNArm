@@ -1,0 +1,222 @@
+Cleaning folder.
+Building test programs...
+gcc -o ./build/cgmtest -I/u/cs/ugrad/noah/packages/ati-stream-v2.1/usr/include -L/u/cs/ugrad/noah/packages/ati-stream-v2.1/usr/lib/x86_64 -I. cgmtest.c -lOpenCL
+gcc -o ./build/cgmtest_image -I/u/cs/ugrad/noah/packages/ati-stream-v2.1/usr/include -L/u/cs/ugrad/noah/packages/ati-stream-v2.1/usr/lib/x86_64 -I. cgmtest_image.c -lOpenCL
+gcc -o ./build/cgmtest_cached -I/u/cs/ugrad/noah/packages/ati-stream-v2.1/usr/include -L/u/cs/ugrad/noah/packages/ati-stream-v2.1/usr/lib/x86_64 -I. cgmtest_cached.c -lOpenCL
+Done.
+
+Running tests on CPU...
+All tests run with key length of 16
+Note that saturated lists are ones with many matches.
+
+=============================================
+
+Key Maximum: 32\tList Size: 100\tSaturated:
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.012000
+Binary Search: 0.235000
+Simple Parallel: 0.442000
+
+*****Results*****:
+Sequential: 0.012000
+Binary Search: 0.235000
+Simple Parallel: 0.442000
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.007000
+Constant Cacheing: 0.548000
+Local Cacheing: 3.100000
+
+*****Results*****:
+Sequential: 0.007000
+Constant Cacheing: 0.548000
+Local Cacheing: 3.100000
+Key Maximum: 1000\tList Size: 100\tUnsaturated:
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.009000
+Binary Search: 0.227000
+Simple Parallel: 0.438000
+
+*****Results*****:
+Sequential: 0.009000
+Binary Search: 0.227000
+Simple Parallel: 0.438000
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.007000
+Constant Cacheing: 0.396000
+Local Cacheing: 3.633000
+
+*****Results*****:
+Sequential: 0.007000
+Constant Cacheing: 0.396000
+Local Cacheing: 3.633000
+Key Maximum: 3276\tList Size: 32768\tSaturated:
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.005000
+Binary Search: 0.219000
+Simple Parallel: 0.479000
+
+*****Results*****:
+Sequential: 0.005000
+Binary Search: 0.219000
+Simple Parallel: 0.479000
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.006000
+Constant Cacheing: 0.426000
+Local Cacheing: 2.955000
+
+*****Results*****:
+Sequential: 0.006000
+Constant Cacheing: 0.426000
+Local Cacheing: 2.955000
+Key Maximum: 1048576\tList Size: 32768\tUnsaturated:
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.009000
+Binary Search: 0.214000
+Simple Parallel: 0.448000
+
+*****Results*****:
+Sequential: 0.009000
+Binary Search: 0.214000
+Simple Parallel: 0.448000
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.007000
+Constant Cacheing: 0.430000
+Local Cacheing: 3.011000
+
+*****Results*****:
+Sequential: 0.007000
+Constant Cacheing: 0.430000
+Local Cacheing: 3.011000
+
+=============================================
+
+Running tests on GPU...
+All tests run with key length of 16
+Note that saturated lists are ones with many matches.
+
+=============================================
+
+Key Maximum: 32\tList Size: 100\tSaturated:
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.009000
+Binary Search: 0.225000
+Simple Parallel: 0.441000
+
+*****Results*****:
+Sequential: 0.009000
+Binary Search: 0.225000
+Simple Parallel: 0.441000
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.009000
+Constant Cacheing: 0.402000
+Local Cacheing: 2.829000
+
+*****Results*****:
+Sequential: 0.009000
+Constant Cacheing: 0.402000
+Local Cacheing: 2.829000
+Key Maximum: 1000\tList Size: 100\tUnsaturated:
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.009000
+Binary Search: 0.238000
+Simple Parallel: 0.563000
+
+*****Results*****:
+Sequential: 0.009000
+Binary Search: 0.238000
+Simple Parallel: 0.563000
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.008000
+Constant Cacheing: 0.539000
+Local Cacheing: 3.165000
+
+*****Results*****:
+Sequential: 0.008000
+Constant Cacheing: 0.539000
+Local Cacheing: 3.165000
+Key Maximum: 3276\tList Size: 32768\tSaturated:
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.008000
+Binary Search: 0.225000
+Simple Parallel: 0.531000
+
+*****Results*****:
+Sequential: 0.008000
+Binary Search: 0.225000
+Simple Parallel: 0.531000
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.006000
+Constant Cacheing: 0.384000
+Local Cacheing: 2.941000
+
+*****Results*****:
+Sequential: 0.006000
+Constant Cacheing: 0.384000
+Local Cacheing: 2.941000
+Key Maximum: 1048576\tList Size: 32768\tUnsaturated:
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.009000
+Binary Search: 0.241000
+Simple Parallel: 0.596000
+
+*****Results*****:
+Sequential: 0.009000
+Binary Search: 0.241000
+Simple Parallel: 0.596000
+*****Trial 0*****
+Generating lists...Done.
+Sorting...Done.
+Executing...
+Sequential: 0.007000
+Constant Cacheing: 0.400000
+Local Cacheing: 2.681000
+
+*****Results*****:
+Sequential: 0.007000
+Constant Cacheing: 0.400000
+Local Cacheing: 2.681000

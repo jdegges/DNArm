@@ -1,0 +1,86 @@
+#!/bin/bash
+if [ -d "build" ]; then
+	echo "Cleaning folder."
+	rm -rf ./build
+fi
+echo "Building test programs..."
+touch *
+mkdir build
+make
+cp *.cl build
+if [ -f "./build/cgmtest" ]; then
+	echo "Done."
+	echo ""
+
+	echo "Running tests on CPU..."
+	echo "All tests run with key length of 16"
+	echo "Times are averaged over 10 randomized runs"
+	echo "Note that saturated lists are ones with many matches."
+	echo ""
+
+	echo "============================================="
+	echo ""
+
+	echo "*** Key Maximum: 32 List Size: 100 Saturated:"
+	echo ""
+	./build/cgmtest 32 16 100 10 8
+	./build/cgmtest_cached 32 16 100 10 8
+	echo ""
+
+	echo "*** Key Maximum: 1000 List Size: 100 Unsaturated:"
+	echo ""
+	./build/cgmtest 1000 16 100 10 8
+	./build/cgmtest_cached 1000 16 100 10 8
+	echo ""
+
+	echo "*** Key Maximum: 3276 List Size: 32768 Saturated:"
+	echo ""
+	./build/cgmtest 32 16 100 10 8
+	./build/cgmtest_cached 32 16 100 10 8
+	echo ""
+
+	echo "*** Key Maximum: 1048576 List Size: 32768 Unsaturated:"
+	echo ""
+	./build/cgmtest 1000 16 100 10 8
+	./build/cgmtest_cached 1000 16 100 10 8
+	echo ""
+
+	echo "============================================="
+	echo ""
+
+	echo "Running tests on GPU..."
+	echo "All tests run with key length of 16"
+	echo "Times are averaged over 10 randomized runs"
+	echo "Note that saturated lists are ones with many matches."
+	echo ""
+	
+	echo "============================================="
+	echo ""
+
+	echo "*** Key Maximum: 32 List Size: 100 Saturated:"
+	echo ""
+	./build/cgmtest 32 16 100 10 8 1
+	./build/cgmtest_cached 32 16 100 10 8 1
+	echo ""
+
+	echo ""
+	echo "*** Key Maximum: 1000 List Size: 100 Unsaturated:"
+	echo ""
+	./build/cgmtest 1000 16 100 10 8 1
+	./build/cgmtest_cached 1000 16 100 10 8 1
+	echo ""
+
+	echo "*** Key Maximum: 3276 List Size: 32768 Saturated:"
+	echo ""
+	./build/cgmtest 32 16 100 10 8 1
+	./build/cgmtest_cached 32 16 100 10 8 1
+	echo ""
+
+	echo "*** Key Maximum: 1048576 List Size: 32768 Unsaturated:"
+	echo ""
+	./build/cgmtest 1000 16 100 10 8 1
+	./build/cgmtest_cached 1000 16 100 10 8 1
+
+else
+	echo "Error compiling. Aboring..."
+fi

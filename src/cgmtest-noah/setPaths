@@ -1,0 +1,9 @@
+#!/usr/bin/bash
+
+PATH=${PATH}:/w/class.1/cs/cs133/cs133t2/openmpi/bin
+PATH=/usr/local/cs/bin:usr/local/cs/gcc:${PATH}; export PATH
+ATISTREAM=~/packages/ati-stream-v2.1; export ATISTREAM
+LDFLAGS=-L${ATISTREAM}/usr/lib/x86_64;export LDFLAGS
+CPPFLAGS=-I${ATISTREAM}/usr/include; export CPPFLAGS
+LD_LIBRARY_PATH=${ATISTREAM}/usr/lib/x86_64; export LD_LIBRARY_PATH
+LD_PRELOAD=${ATISTREAM}/usr/lib/x86_64/libatiocl64.so; export LD_PRELOAD
