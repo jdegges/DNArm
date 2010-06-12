@@ -56,4 +56,3 @@ main (void)
   cldb_close (db);
   exit (EXIT_SUCCESS);
 }
-

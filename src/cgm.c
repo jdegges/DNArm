@@ -4,8 +4,11 @@
 #include<stdint.h>
 #include<stdbool.h>
 #include "db.h"
+#include "fgmcl.h"
 
-struct cgmResult{
+#define CHUNKSIZE 1024
+
+struct cgmRes{
 	int read[3]; // 16 bases in each int
 
 	uint32_t* matches; // pointer to list of match locations
@@ -82,8 +85,10 @@ int doubleMatch(uint32_t* a, uint32_t* b, int aLength, int bLength, uint32_t sec
 			else if(b[j] > a[i] + secLength + gap)
 				break;
 			else{
-				dubs[mLength] = a[i]-startOffset;
-				mLength++;
+				if(startOffset < a[i]){
+					dubs[mLength] = a[i]-startOffset;
+					mLength++;
+				}
 				break;
 			}
 		}
@@ -164,43 +169,85 @@ int cgm_solver(uint32_t a, uint32_t b, uint32_t c, uint32_t** matches, struct db
 	return count;
 }
 
-int cgm_thread(int** reads, uint32_t numReads, uint32_t startPos, uint32_t numToRead, struct db* database)
+int cgm(uint32_t* genome, uint32_t gLength, int** reads, uint32_t numReads, int chunkSize, struct db* database)
 {
 	int i;
 
-	struct cgmResult* results = (struct cgmResult*) malloc(sizeof(struct cgmResult)*numToRead);
+	struct cgmRes* results = (struct cgmRes*) malloc(sizeof(struct cgmRes)*numReads);
 	if(results == NULL){
 		printf("Unable to allocate memory!");
 		exit(-1);
 	}
-	
-	for(i = 0; i < numToRead; i++){
-		results[i].read[0] = reads[startPos+i][0];
-		results[i].read[1] = reads[startPos+i][1];
-		results[i].read[2] = reads[startPos+i][2];
-		results[i].length = cgm_solver(reads[startPos+i][0], reads[startPos+i][1], reads[startPos+i][2], &results[i].matches, database);
 
+
+	#pragma omp parallel for schedule(dynamic, chunkSize)
+	for(i = 0; i < numReads; i++)
+	{
+		results[i].read[0] = reads[i][0];
+		results[i].read[1] = reads[i][1];
+		results[i].read[2] = reads[i][2];
+		results[i].length = cgm_solver(reads[i][0], reads[i][1], reads[i][2], &results[i].matches, database);
 	}
 
-	int j = fgmStart(results, i);
+	int j = fgmLaunch(genome, gLength, results, i);
+
+	free(results);
+
 	return i;
 }
 
-int cgm(int** reads, uint32_t numReads, int chunkSize, struct db* database)
+int main(int argc, char* argv[])
 {
-	int i;
-
-	#pragma omp parallel for schedule(dynamic, 1)
-	for(i = 0; i < numReads; i++)
-	{
-		int numToRead = chunkSize;
-		if(i*chunkSize > numReads)
-			numToRead = numReads - (i-1)*chunkSize;
-
-		cgm_thread(reads, numReads, i*chunkSize, numToRead, database);
-
+	if(argc != 7){
+		printf("USAGE: cgm GENOMEFILE GENOMESIZE READFILE READFILESIZE DATABASEFILE THREADS\n");
+		exit(-1);
 	}
 
-	return numReads;
-}
+	FILE* g = fopen(argv[1], "r");
+	int gSize = atoi(argv[2]);
+	FILE* r = fopen(argv[3], "r");
+	int numReads = atoi(argv[4]);
+	struct db* database = db_open(argv[5], 1);
+	if(g == NULL || r == NULL || database == NULL){
+		printf("Error opening input file!\n");
+		exit(-1);
+	}
+	int threads = atoi(argv[6]);
+	
+	omp_set_num_threads(threads);
+	
+	uint32_t* genome = (uint32_t*) malloc(sizeof(uint32_t)*gSize);
+	if(genome == NULL){
+		printf("Error allocating memory!\n");
+		exit(-1);
+	}
 
+	int** reads = (int**) malloc(sizeof(int*)*CHUNKSIZE);
+	if(reads == NULL){
+		printf("Error allocating memory!\n");
+		exit(-1);
+	}
+	int i, j;
+	for(i = 0; i < CHUNKSIZE; i++){
+		reads[i] = (int*) malloc(sizeof(int)*4);
+		if(reads[i] == NULL){
+			printf("Error allocating memory!\n");
+			exit(-1);
+		}
+	}
+
+	fread(genome, gSize, gSize, g);
+
+	for(i = 0; i < numReads; i+=CHUNKSIZE){ 
+		for(j = 0; j < CHUNKSIZE && i+j < numReads; j++)
+			fread(&(reads[j][0]), 16, 16, r);
+
+		int num = CHUNKSIZE;
+		if(i + CHUNKSIZE > numReads)
+			num = numReads - i;
+		
+		cgm(genome,gSize,reads,num,16,database);
+	}
+
+	return 0;
+}

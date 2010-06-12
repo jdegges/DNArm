@@ -120,5 +120,3 @@ echo "parallel-db     : $BUILD_PARALLEL_DB"
 echo "readgen         : $BUILD_READGEN"
 echo "samplecl        : $BUILD_SAMPLECL"
 echo
-
-
