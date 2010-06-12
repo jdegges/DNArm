@@ -23,7 +23,7 @@
 
 int main(int argc, char ** argv)
 {
-	int x, i;
+	int a, x, i;
 	mData ** results;// [34];	//for saving the results of our tests...
 	
 	
@@ -90,23 +90,24 @@ int main(int argc, char ** argv)
 	//mData * fgm(uint32_t * list, uint32_t listLen, int readLen, uint32_t * matchLocLst, int mllLen, uint32_t * rdSeq);
 	
 //	for(x = 0; x < 34; x++)
-	for(x = 0; x < 34; x++)	
-	{//12
-		printf("test index %d:\n", x);
-		results[x] = fgm(testRefSeq, listLen, readLen, &(locs[x]), 1, testReads[x]);
-		printf("====TEST NUMBER %d====\n", (x+1));
-		if(results[x] == NULL)
-			printf("NO MATCH FOUND!!!\n");
-		else
-		{
-			if(results[x]->len == 0)	//this is an exact match.
-				printf("EXACT MATCH! no mutations were discovered in this read sequence.\n");
-			for(i = 0; i < results[x]->len; i++)
+	for(a = 0; a < 10000; a++)
+		for(x = 0; x < 34; x++)	
+		{//12
+			printf("test index %d:\n", x);
+			results[x] = fgm(testRefSeq, listLen, readLen, &(locs[x]), 1, testReads[x]);
+			printf("====TEST NUMBER %d====\n", (x+1));
+			if(results[x] == NULL)
+				printf("NO MATCH FOUND!!!\n");
+			else
 			{
-				printf("location: %u \tmutation: %c \tins: %i\n", results[x]->locs[i], results[x]->mods[i], results[x]->ins[i]);
+				if(results[x]->len == 0)	//this is an exact match.
+					printf("EXACT MATCH! no mutations were discovered in this read sequence.\n");
+				for(i = 0; i < results[x]->len; i++)
+				{
+					printf("location: %u \tmutation: %c \tins: %i\n", results[x]->locs[i], results[x]->mods[i], results[x]->ins[i]);
+				}
 			}
 		}
-	}
 	
 	
 	return 0;

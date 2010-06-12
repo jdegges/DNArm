@@ -337,12 +337,12 @@ void delDetect(mData * returnData, uint * diffSeq, uint * rdSeq, int rdLen, uint
 //--mllLen is the number of possible match locations.
 //--rdSeq is the read sequence. 
 //--listLen is the length of the reference genome.
-__kernel void fgm(__global mData * g_returnData, __global uint * list, uint listLen, 
+__kernel void fgm(__global mData * returnData, __global uint * list, uint listLen, 
 			__global uint * g_matchLocLst, __global uint * g_mllLen, 
 			__global uint * g_rdSeq, uint mlMax, uint batchSize)
 {	
 	int start;	//matchloclst is in nucleotides, correct into bits.
-	int len = readLen>>4; //readlen is in nucleotides, correct into uint sizing.
+	int len = rdLen>>4; //readlen is in nucleotides, correct into uint sizing.
 	int lBound; //correct from nucleotides into sizing of uint
 	int offset; //correct offset from nucleotides into bits.
 	int min, secMin;
@@ -380,10 +380,10 @@ __kernel void fgm(__global mData * g_returnData, __global uint * list, uint list
 		return;			//this is a jump-out point... basically only needed at the end of processing, when there isnt enough data to do a full batch process.
 		
 		
-	mData * returnData = &(g_returnData[tn]);
-	uint * rdSeq = &(g_rdSeq[tn * 3]);	//the readsequence that we'll be looking at.
-	uint * matchLocLst = &(g_matchLocLst[tn * mlMax]);
-	uint * mllLen = &(g_mllLen[tn]);
+//	mData * returnData = g_returnData + tn;//&(g_returnData[tn]);
+	uint * rdSeq = g_rdSeq + (tn*3);//&(g_rdSeq[tn * 3]);	//the readsequence that we'll be looking at.
+	uint * matchLocLst = g_matchLocLst + (tn*mlMax);//&(g_matchLocLst[tn * mlMax]);
+	uint * mllLen = g_mllLen + tn;//&(g_mllLen[tn]);
 
 	
 	
@@ -470,19 +470,19 @@ __kernel void fgm(__global mData * g_returnData, __global uint * list, uint list
 
 		if(min < THRESHOLD && minIdx == 3)	//if the non-skewed reference sequence is a very good match...
 		{
-//			returnData = malloc(sizeof(mData)); //allocate our return data.
-//			returnData -> mods = malloc(compCount[3] * sizeof(char));	//allocate space for the modification data tracking
-//			returnData -> locs = malloc(compCount[3] * sizeof(unsigned int));	//allocate space for modification location tracking
-			returnData -> len = compCount[3];	//store the length of the mutation index for this read.
-//			returnData -> ins = malloc(compCount[3] * sizeof(int));
+//			returnData[tn] = malloc(sizeof(mData)); //allocate our return data.
+//			returnData[tn] -> mods = malloc(compCount[3] * sizeof(char));	//allocate space for the modification data tracking
+//			returnData[tn] -> locs = malloc(compCount[3] * sizeof(unsigned int));	//allocate space for modification location tracking
+			returnData[tn] -> len = compCount[3];	//store the length of the mutation index for this read.
+//			returnData[tn] -> ins = malloc(compCount[3] * sizeof(int));
 			
-			mutationDetect(returnData, &(diffSeq[len*3]), rdSeq, len, matchLocLst[i]);	//the only thing detected here will be mutations or errors.
+			mutationDetect(&(returnData[tn]), &(diffSeq[len*3]), rdSeq, len, matchLocLst[i]);	//the only thing detected here will be mutations or errors.
 		
 		//fill in our return data structure. pass in the return data pointer, the inconsistency list, the read sequence itself, and the length.
 		
 		
-		
-			return returnData;	//-------------------success!!!!!!
+			return;
+//			return returnData;	//-------------------success!!!!!!
 		}
 
 		if(min > INDEL_THRESHOLD)	//this just makes sure that we jump out if we're WAY off base in our estimation.
@@ -528,21 +528,21 @@ __kernel void fgm(__global mData * g_returnData, __global uint * list, uint list
 		
 		//the indelLoc must be added to the start position to obtain the absolute location of the indel, relative to the absolute beginning of the REFERENCE GENOME. 
 		//
-//		returnData = malloc(sizeof(mData)); //allocate our return data.
+//		returnData[tn] = malloc(sizeof(mData)); //allocate our return data.
 		
 		
 		//by the time we get here, we have the location of the indel, the length of the indel, and the proper diff sequences. we just need to calculate the actual differences. 
 
 		if(ins == 1)	//this part is straightforward...
-			insDetect(returnData, &(diffSeq[len*highest]), rdSeq, len, matchLocLst[i], indelLen, indelLoc, highest - 3);
+			insDetect(&(returnData[tn]), &(diffSeq[len*highest]), rdSeq, len, matchLocLst[i], indelLen, indelLoc, highest - 3);
 		else if (del == 1)
-			delDetect(returnData, &(diffSeq[len*lowest]), rdSeq, len, matchLocLst[i], indelLen, indelLoc, lowest - 3);
+			delDetect(&(returnData[tn]), &(diffSeq[len*lowest]), rdSeq, len, matchLocLst[i], indelLen, indelLoc, lowest - 3);
 
-		
-		return returnData;		
+		return;
+//		return returnData;		
 		
 	}	//the end of calculation for one match possibility
-	returnData->len = -1;
+	returnData[tn].len = -1;
 	return;
 	//return NULL;	//if we're here, we had no luck. oh well.
 }

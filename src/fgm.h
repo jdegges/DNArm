@@ -22,6 +22,13 @@ typedef struct mutationData
 	int len;
 } mData;
 
+typedef struct cgmResult{
+      int read[3]; // 16 bases in each int
+ 
+      uint* matches; // pointer to list of match locations
+      int length; // length of match list
+} cgmRes;
+
 unsigned int smallCount(uint32_t diff);
 
 unsigned int breakDetect(uint32_t * leadSeq, uint32_t * followSeq, int len);
@@ -36,6 +43,6 @@ void insDetect(mData * returnData, uint32_t * diffSeq, uint32_t * rdSeq, int rdL
 
 void delDetect(mData * returnData, uint32_t * diffSeq, uint32_t * rdSeq, int rdLen, uint32_t startLoc, int delLen, int delLoc, int ldOffset);
 
-mData * fgm(uint32_t * list, uint32_t listLen, int readLen, uint32_t * matchLocLst, int mllLen, uint32_t * rdSeq);
+void fgm(mData * returnData, uint32_t * list, uint32_t listLen, int readLen, uint32_t * matchLocLst, int mllLen, uint32_t * rdSeq);
 
 #endif

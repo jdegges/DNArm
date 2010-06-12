@@ -32,10 +32,9 @@ unsigned int breakDetect(uint32_t * leadSeq, uint32_t * followSeq, int len)
 	uint32_t leadMask, followMask;
 	uint32_t lead, follow;	//the lead/follow sequences that we'll be using for comparison. these are of length 16 nucleotides, but in each iteration of the loop we want to shift over by only 8... so we have to screw with them a bit.
 	int aLen = 2 * len - 1;
-//	* dCount = 0;
 	unsigned int rVal;
 	
-//	for(x = len - 1; x >= 0; x--)	//for all of the bins...
+
 	for(x = 0; x < aLen; x++)	//for all the bins...
 	{	
 	
@@ -439,6 +438,7 @@ mData * fgm(uint32_t * list, uint32_t listLen, int readLen, uint32_t * matchLocL
 
 		if(min < THRESHOLD && minIdx == 3)	//if the non-skewed reference sequence is a very good match...
 		{
+
 			returnData = malloc(sizeof(mData)); //allocate our return data.
 //			returnData -> mods = malloc(compCount[3] * sizeof(char));	//allocate space for the modification data tracking
 //			returnData -> locs = malloc(compCount[3] * sizeof(unsigned int));	//allocate space for modification location tracking
