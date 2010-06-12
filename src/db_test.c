@@ -4,62 +4,54 @@
 #include <cldb.h>
 #include <pthread.h>
 
-struct arg_data{
-  struct cldb *db;
-  uint64_t key;
-  uint32_t* values;
-};  	
+static const uint64_t parallel = 4;
 
-uint64_t total=0;
-pthread_mutex_t total_lock;
+struct cldb *db;
+static const uint64_t key_max = 4294967296;
+static const uint64_t work_size = 4294967296 / 4;
 
-void prepare(void* threadarg)
+static void *
+prepare (void* vptr)
 {
-   struct arg_data *my_data;
-   my_data = (struct arg_data *) threadarg;
-   int32_t gi_count = cldb_get(my_data->db, my_data->key, &(my_data->values));
-   if (gi_count < 0)
-   {
-    fprintf (stderr, "invalid count: %d\n", gi_count);
-    exit (EXIT_FAILURE);
-   }  
-    total+=gi_count;
+  uint64_t *id = vptr;
+  uint32_t *values;
+  uint64_t k;
+
+  for (k = *id; k < key_max; k+=*id)
+    {
+      int32_t count = cldb_get (db, k, &values);
+      if (count < 0)
+        {
+          fprintf (stderr, "invalid count: %d\n", count);
+          exit (EXIT_FAILURE);
+        }
+    }
+  free (id);
+  return NULL;
 }
 
 int
 main (void)
 {
-  total=0;
-  pthread_mutex_init(&total_lock, NULL);
-  uint64_t key_max = 4294967296;
-  uint64_t key;
+  pthread_t tid[parallel];
   int i;
-  struct cldb *db = cldb_open ("/mnt/gi.bin", 4);
-  pthread_t pthreads[4];
-  if (NULL == db)
+
+  if (NULL == (db = cldb_open ("/mnt/gi.bin", 4)))
     {
       fprintf (stderr, "cldb_open\n");
       exit (EXIT_FAILURE);
     }
 
-  while(key < key_max)
-  {
-    for(i=0; i< 4; i++){
-      uint32_t *gi_values;
-      struct arg_data data;
-      data.db = db;
-      data.key = key;
-      data.values = gi_values;
+  for (i = 0; i < parallel; i++)
+    {
+      uint64_t *id = malloc (sizeof *id);
+      *id = i;
 
-      pthread_create(&pthreads[i], NULL, prepare, (void*) &data);
-      key++;
-    }
-    for(i=0; i< 4; i++){
-      pthread_join(pthreads[i], NULL);
+      pthread_create (&tid[i], NULL, prepare, id);
     }
 
-  }
-   
+  for (i = 0; i < parallel; i++)
+    pthread_join (tid[i], NULL);
 
   cldb_close (db);
   exit (EXIT_SUCCESS);

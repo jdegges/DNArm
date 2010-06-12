@@ -419,16 +419,20 @@ exit:
 
 
 
-void*
-cldb_precache (struct cldb* db)
+void *
+cldb_precache (void *vptr)
 {
+  struct cldb *db = vptr;
+
+  pthread_mutex_lock (&backup_lock);
   while (1)
     {
       uint32_t l1_switch_index;
 
-      pthread_mutex_lock (&backup_lock);
-
       l1_switch_index = db->l1_index + 1;
+
+      if (L1_SIZE <= l1_switch_index)
+        break;
 
       /* read in the adjacent L2 index segment */
       xfseekread (db->l2_switch, 1, L2_BYTES, db->l1[0+l1_switch_index*2],
@@ -439,8 +443,8 @@ cldb_precache (struct cldb* db)
                   db->l1[0+l1_switch_index*2] + L2_BYTES, SEEK_SET, db->fp);
 
       pthread_cond_wait (&cache_switch, &backup_lock);
-      pthread_mutex_unlock (&backup_lock);
     }
+  pthread_mutex_unlock (&backup_lock);
 }
 
 
@@ -527,17 +531,16 @@ cldb_close (struct cldb *db)
 void
 cldb_wait (struct cldb *db, uint32_t l1)
 {
-
-
-  int ret =  pthread_barrier_wait(&switch_barrier);
+  int ret =  pthread_barrier_wait (&switch_barrier);
 
   //a single thread needs to do switch the threads
-  if  (ret ==PTHREAD_BARRIER_SERIAL_THREAD){
-       //lock so cache_blocks wont be accessed
+  if (ret == PTHREAD_BARRIER_SERIAL_THREAD)
+    {
+      //lock so cache_blocks wont be accessed
       pthread_mutex_lock (&backup_lock);
 
       //switch current cache to the backup cache
-      uint32_t temp = db->l2;
+      uint32_t *temp = db->l2;
       db->l2 = db->l2_switch;
       db->l2_switch = temp;
 
@@ -548,16 +551,15 @@ cldb_wait (struct cldb *db, uint32_t l1)
       db->l1_index = l1;
 
       //cache_switch thread will need backup_lock to change the precache
-      pthread_cond_broadcast(&cache_switch);
+      pthread_cond_broadcast (&cache_switch);
       pthread_mutex_unlock (&backup_lock);
 
       //the other threads need cache_lock to know that the switch is complete
       //get precache thread to get next precache
     }
+
   //the rest need to wait for the switching to finish, wait again
   ret =  pthread_barrier_wait(&switch_barrier);
-
-
 }
 
 int32_t
