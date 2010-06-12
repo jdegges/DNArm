@@ -1,0 +1,10 @@
+this, unfortunately, is really all i have to show for the fine grain matcher.
+
+src/fgmtest contains a variety of files in various states. fgmcl* files were attempts at implementing openCL for this algorithm. the files with omp* in the filename were part of a last ditch effort to throw it together in opemMP, because we spent *way* too long and i severely underestimated the complications that would arise from implementing openCL.
+
+basically, just go into the src/fgmtest/sequential directory, and do 
+gcc fgm_test.c fgm.c -o test
+... then run test.
+the test program is a series of 34 tests i wrote (the .xlsx sheet in the root directory outlines what the tests are, in detail), and the tests loop 10000 times. yeah, i know it's sequential only... really lame. it is pretty fast though... 340k fine grain difference detections in 1.1 secs... 
+
+thats all i've got working at the moment though =\
